@@ -1,0 +1,36 @@
+/*
+  runner: node morph.js eva
+*/
+
+var lat = process.argv.slice(2)[0] || false;
+var pdch = process.argv.slice(3)[0] || false;
+var util = require('util');
+
+var salita = require('salita-component');
+var morph = require('./index');
+
+if (!lat) return log('?');
+
+var samasa;
+if (/[a-zA-Z]/.test(lat[0])) {
+    samasa = salita.slp2sa(lat);
+} else {
+    samasa = lat;
+    lat = salita.sa2slp(samasa);
+}
+
+log('_la_:', lat, '_sa_:', samasa);
+
+console.time('morph');
+
+morph.run(samasa, function(res) {
+    log('laghu res ==============>>', res);
+});
+
+console.timeEnd('morph');
+log('morpheus: finished');
+
+
+
+
+function log() { console.log.apply(console, arguments) }
