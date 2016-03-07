@@ -69,11 +69,11 @@ function checkTest(test, cb) {
             else ok = false;
         });
         if (!ok) {
-            log('ABSENT', line);
+            log('ABSENT', test);
             throw new Error();
         } else {
             log('OK', salat, samasa);
-            return cb(salat);
+            return cb(null, salat);
         }
     }); // morph
 }
