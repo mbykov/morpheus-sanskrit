@@ -4,6 +4,7 @@
 
 var salita = require('salita-component');
 var _ = require('underscore');
+var async = require('async');
 // var fs = require('fs');
 // var util = require('util');
 var s = require('sandhi');
@@ -25,9 +26,10 @@ runGitaTests();
 
 function runGitaTests() {
     getDocs(function(docs) {
-        docs = docs.slice(3,7);
-        // var ok;
-        var form, next, nextLine, samasa, trn, pdch;
+        docs = docs.slice(1, 3);
+        var ok;
+        var tests = [];
+        var form, next, nextLine, trn, pdch;
         var dicts;
         docs.forEach(function(doc, idx) {
             // log('D', idx, doc);
@@ -38,47 +40,44 @@ function runGitaTests() {
                 next = (nextLine) ? nextLine.form : null;
                 if (next == '।') next = null;
                 if (form == '।') return;
-                samasa = outer(form, next);
-                if (form != samasa) log('L', idy, form, 'next:', next, 'clean', samasa);
+                // var samasa = outer(form, next);
+                // if (form != samasa) log('L', idy, form, 'next:', next, 'clean', samasa);
                 pdch = line.dicts.map(function(dict) { return dict.form});
-
-                var salat = salita.sa2slp(samasa)
-                // log('PDCH', salat, samasa, 'pdch:', pdch);
-                // morph забирает dicts из gita-add
-                morph.run(samasa, next, function(dicts) {
-                    log('idx', idx, salat, samasa);
-                    if (!dicts || dicts.length == 0) {
-                        log('NO DICTS idx:', idx, 'salat', salat, 'samasa', samasa);
-                    }
-                    var stems = dicts.map(function(dict) { return dict.stem});
-                    log('PDCH', salat, samasa, 'pdch:', pdch, 'stems:', stems);
-                    pdch.forEach(function(pada) {
-                        if (inc(stems, pada)) ok = true;
-                        else ok = false;
-                    });
-                    if (!ok) {
-                        log('ABSENT', line);
-                        throw new Error();
-                    } else {
-                        log('OK')
-                    }
-                }); // morph
-
+                var test = {sutra: doc.num, form: form, next: next, pdch: pdch};
+                tests.push(test);
             });
-        //     if (doc.trns) return;
-        //     var samasa = doc.form;
-        //     var nextDoc = docs[idx+1];
-        //     var next = (nextDoc) ? nextDoc.form : '';
-        //     log('SAMASA', samasa, 'NEXT', next);
-        //     if (samasa.length > 19) return;
-        //     var pdchs = doc.pdchs.map(function(pdch) { return pdch.split('-')});
         });
-        // log('DOCS', docs);
+        log('TESTS SIZE', tests.length);
+        async.mapSeries(tests, checkTest, function(res) {
+            log('====================', res);
+        });
     });
 }
 
+function checkTest(test, cb) {
+    var samasa = test.form;
+    morph.run(samasa, test.next, function(dicts) {
+        var salat = salita.sa2slp(samasa)
+        log('SALAT', salat)
+        if (!dicts || dicts.length == 0) {
+            log('NO DICTS', 'salat:', salat, 'samasa', samasa);
+        }
+        var stems = dicts.map(function(dict) { return dict.stem});
+        // log('PDCH', idx, salat, samasa, 'pdch:', pdch, 'stems:', stems);
+        test.pdch.forEach(function(pada) {
+            if (inc(stems, pada)) ok = true;
+            else ok = false;
+        });
+        if (!ok) {
+            log('ABSENT', line);
+            throw new Error();
+        } else {
+            log('OK', salat, samasa);
+            return cb(salat);
+        }
+    }); // morph
+}
 
-// нельзя забирать через .all, потому что next не тот.
 function getDocs(cb) {
     relax
         .all([])
