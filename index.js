@@ -1,15 +1,16 @@
 // morpheus v.0.3.0
 
 var _ = require('underscore');
-var sandhi = require('sandhi');
-var c = sandhi.const;
-var u = sandhi.u;
-var s = sandhi.sandhi;
+var s = require('sandhi');
+var c = s.const;
+var u = s.u;
+var sandhi = s.sandhi;
+var outer = s.outer;
 var log = u.log;
 var p = u.p;
 var rasper = require('flakes');
 
-dbpath = 'http://localhost:5984';
+dbpath = 'http://admin:kjre4317@localhost:5984';
 var Relax = require('relax-component');
 var relax = new Relax(dbpath);
 relax.dbname('gita-add');
@@ -21,46 +22,86 @@ function morpheus() {
     this.queries = [];
 }
 
+/*
+  outer:
+  во-вторых, каждому flake на -o нужно сразу добавить flake на visarga, etc ?
+  а есть-ли вообще у меня в словаре слова с окончанием на o, на e? есть, пара слов и обращения
+  непонятно - просто добавить висаргу? что потом?
+  или - только в последнюю pada в цепочке?
+  выписать все реальные слова на -o в словаре? Пока список:
+  - अहो = alas - अथो = or in other words - नो = nor - आहो = or else - все они попали бы в список terms, если бы стояли отдельно
+  или просто outer(samasa), но кроме этого списка?
+  outer заменит -o, а в ответе исключение - aho
+  то есть outer, и затем, если в цепочке ahaH, добавить aho, etc на эти исключения
+  по честному, нужно учитывать next, но в тестах я gita-add next не сделал, для простоты
+  ==> нельзя вообще в тестах работать с gita-add, потому что там формы вырваны из контекста.
+  а в реале будет задан какой-то конкретный next
+*/
+
 // main
-morpheus.prototype.run = function(samasa, cb) {
-    var clean = correctM(samasa);
+// должен возвращать полностью сформированный список вариантов с весами-вероятностями
+morpheus.prototype.run = function(samasa, next, cb) {
+    if (!next) next = '';
+    // var clean = correctM(samasa);
+    var clean = outer(samasa, next);
+    // log('CLEAN', clean);
     var flakes = rasper.cut(clean);
     // p(flakes);
+    // log('FLAKES size:', flakes.length);
     var stems = _.uniq(_.flatten(flakes));
-    // log(stems);
+    // log('STEMS to get', stems.length);
     getDicts(stems, function(err, dbdicts) {
-        log('DBD', dbdicts);
+        // log('DBD', dbdicts);
         // TODO: теперь установить соответствие между flakes и dbdicts
-        // с учетом того, что в словаре Гиты dicts повторяются
+        cb(dbdicts);
     });
-    cb('ok');
+    // cb('ok');
     return;
 }
 
 
 // забрать реально существующие padas из BD
 function getDicts(stems, cb) {
-    // stems = ["क्तात्मा","तात्मा","आत्मा","अत्मा","त्मा","मा"];
-    var keys = ['keys=', JSON.stringify(stems)].join('');
-    // var qkeys = 'keys=' + JSON.stringify(stems);
+    var keys = {keys: stems};
     var view = 'gita-add/byForm';
-    // var view = 'sa/stem';
-    log('SSS-new', keys);
-    // qkeys = keys=["क्तात्मा","तात्मा","आत्मा","अत्मा","त्मा","मा"];
-    // qkeys = 'keys=["क्तात्मा","तात्मा","आत्मा","अत्मा","त्मा","मा"]';
-    // log('SSS-new', qkeys);
+    // log('morph-03 getDicts - SSS-new', keys.length);
+    // FIXME: некузяво, keys вручную отдельно посылается через .send
+    // и Content-Type отдельно прописан - так нельзя
+    relax
+        .postView(view)
+        .send(keys)
+        // .query({limit: 100})
+        // .query({include_docs: true})
+        .set('Content-Type', 'application/json')
+        .end(function(err, res) {
+            if (err) log('ERR morph getDicts', err, res);
+            if (err) return cb(err, null);
+            var rows = JSON.parse(res.text.trim()).rows;
+            var docs = _.map(rows, function(row) {
+                var doc = {stem: row.key, trn: row.value};
+                return doc;
+            });
+            cb(err, docs);
+        });
+}
+
+function getDicts_(stems, cb) {
+    var keys = ['keys=', JSON.stringify(stems)].join('');
+    var view = 'gita-add/byForm';
+    log('morph-03 getDicts - SSS-new', keys.length);
     relax
         .view(view)
         .query(keys)
-        // .query({include_docs: true})
+    // .query({include_docs: true})
         .query({limit: 100})
         .end(function(err, res) {
+            if (err) log('ERR morph getDicts', err, res);
             if (err) return cb(err, null);
             var rows = JSON.parse(res.text.trim()).rows;
             // log('ROWS', rows);
             // var docs = _.map(rows, function(row) {
-                // var doc = row.doc;
-                // return doc;
+            // var doc = row.doc;
+            // return doc;
             // });
             // в Гите значения dicts повторяются с разными переводами, в других словарях нужен будет .doc
             var docs = _.map(rows, function(row) {

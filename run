@@ -6,6 +6,11 @@ var lat = process.argv.slice(2)[0] || false;
 var pdch = process.argv.slice(3)[0] || false;
 var util = require('util');
 
+var sandhi = require('sandhi');
+var u = sandhi.u;
+var log = u.log;
+var p = u.p;
+
 var salita = require('salita-component');
 var morph = require('./index');
 
@@ -24,13 +29,8 @@ log('_la_:', lat, '_sa_:', samasa);
 console.time('morph');
 
 morph.run(samasa, function(res) {
-    log('laghu res ==============>>', res);
+    log('morph-0.3 res: ==============>>');
+    p(res);
 });
 
 console.timeEnd('morph');
-log('morpheus: finished');
-
-
-
-
-function log() { console.log.apply(console, arguments) }
