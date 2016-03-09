@@ -28,7 +28,7 @@ log('_la_:', lat, '_sa_:', samasa);
 
 console.time('morph');
 
-morph.run(samasa, function(res) {
+morph.run(samasa, null, function(res) {
     log('morph-0.3 res: ==============>>');
     p(res);
 });

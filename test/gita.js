@@ -26,39 +26,37 @@ runGitaTests();
 
 function runGitaTests() {
     getDocs(function(docs) {
-        docs = docs.slice(1, 3);
-        var ok;
+        docs = docs.slice(45);
         var tests = [];
         var form, next, nextLine, trn, pdch;
         var dicts;
         docs.forEach(function(doc, idx) {
             // log('D', idx, doc);
+            if (!doc.lines) return;
             doc.lines.forEach(function(line, idy) {
                 if (line.trn) return;
                 form = line.form;
+                if (form.length > 19) return;
                 nextLine = doc.lines[idy+1];
                 next = (nextLine) ? nextLine.form : null;
                 if (next == '।') next = null;
                 if (form == '।') return;
-                // var samasa = outer(form, next);
-                // if (form != samasa) log('L', idy, form, 'next:', next, 'clean', samasa);
-                pdch = line.dicts.map(function(dict) { return dict.form});
-                var test = {sutra: doc.num, form: form, next: next, pdch: pdch};
+                pdch = line.dicts.map(function(dict) { return correctM(dict.form) });
+                var test = {idx: idx, sutra: doc.num, form: form, next: next, pdch: pdch};
                 tests.push(test);
             });
         });
         log('TESTS SIZE', tests.length);
-        async.mapSeries(tests, checkTest, function(res) {
-            log('====================', res);
-        });
+        async.mapSeries(tests, checkTest);
     });
 }
 
 function checkTest(test, cb) {
     var samasa = test.form;
+    var ok;
     morph.run(samasa, test.next, function(dicts) {
         var salat = salita.sa2slp(samasa)
-        log('SALAT', salat)
+        // log('SALAT', salat)
         if (!dicts || dicts.length == 0) {
             log('NO DICTS', 'salat:', salat, 'samasa', samasa);
         }
@@ -69,7 +67,9 @@ function checkTest(test, cb) {
             else ok = false;
         });
         if (!ok) {
-            log('ABSENT', test);
+            log('ABSENT:', salat);
+            log('stems:', stems);
+            log('test:', test);
             throw new Error();
         } else {
             log('OK', salat, samasa);
@@ -106,4 +106,11 @@ function getDocs_(cb) {
             var docs = _.map(rows, function(row) { return {samasa: row.key, pdchs: row.value}; });
             cb(docs);
         });
+}
+
+function correctM(str) {
+    var clean = str;
+    var fin = u.last(str);
+    if (fin == c.anusvara) clean = [u.wolast(str), c.m, c.virama].join('');
+    return clean;
 }

@@ -36,23 +36,63 @@ function morpheus() {
   по честному, нужно учитывать next, но в тестах я gita-add next не сделал, для простоты
   ==> нельзя вообще в тестах работать с gita-add, потому что там формы вырваны из контекста.
   а в реале будет задан какой-то конкретный next
+
+  теперь -e. - raTopasTa
+  в samasa нет флексии -e, ayadi-sandhi. А в dict - есть, это локатив. М.б. добавить всегда к dict на -e еще и форму без -e?
+
+  то есть я что исправляю? Сейчас и samasa, и dict, через outer.
+
+  а могут быть разные случаи, в зависимости от next
+  может быть -e в средней паде, всегда не меняется ?
+  может совпадать и в samasa, и в dict - это скажется в MW ?
+  может form= ta, clean= te, что тут, нужно добавить form ? Зачем?
+  например, dict=me, совпадает с samasa. Добавить ma для MW? (если в MW нету)
+  а в 1.47 - dict= upasTe, а самаса= raTopasTa, из-за ayadi. Тут точно добавить, для MW и для BG: उपस्थ = for उपस्थे = on the seat
+  3.28 - form: vartanta, dict: vartante - глагол, vartante, -e обрезано по outer-sandhi.
+
+  итак, запрос на -e, а в словаре MW -a, форма склонения существительного, в BG - dict также на -e
+  или запрос на -a, а в словаре -e, глагол atmanepada
+
+  так как быть ?
+  если в запросе -e, то добавить в запрос -a - точнее, отбросить флексию, --> для MW --> однако, некоторых в MW нет: upasTa, лишь upa+sTa
+  если в запросе -a и next-vow, добавить в запрос -e --> для BG тоже
+
+  в словарь gita-add я не добавляю никаких очищеных форм,
+  в тестах BG я могу преобразовывать samasa в соответствии с dict, добавлять -e или -H, но не трогать dict
+  а в реале?
+  все последние padas на -a, (на согласную) - добавить и -H и -e ? не дохрена ли?
+  в реале я должен отбросить-добавить ВСЕ варианты флексий, их еще более дохренищща будет
+  нет, отбросить - ок, автоматически отброшены (если слоги, однако)
+  а добавить - только -H, -e ?
 */
 
 // main
 // должен возвращать полностью сформированный список вариантов с весами-вероятностями
 morpheus.prototype.run = function(samasa, next, cb) {
-    if (!next) next = '';
-    // var clean = correctM(samasa);
-    var clean = outer(samasa, next);
+    if (!next) next = 'इ'; // FIXME:
+    var clean = correctM(samasa);
+    // var clean = outer(samasa, next);
     // log('CLEAN', clean);
-    var flakes = rasper.cut(clean);
-    // p(flakes);
-    // log('FLAKES size:', flakes.length);
-    var stems = _.uniq(_.flatten(flakes));
-    // log('STEMS to get', stems.length);
+    var chains = rasper.cut(clean);
+    // p(chains);
+    // log('CHAINS size:', chains.length);
+    var stems = _.uniq(_.flatten(chains));
+    log('STEMS to get', stems);
+    if (next) {
+        var beg = u.first(next);
+        var fin = u.last(clean);
+        // log('SIMPLE', beg, u.isSimple(beg));
+        var terms = chains.map(function(chain) { return u.last(chain)});
+        terms = _.uniq(_.flatten(terms));
+        if (fin != c.e && u.isSimple(beg)) {
+            var terms_e = terms.map(function(term) { return [term, c.e].join('')});
+            stems = stems.concat(terms_e);
+        }
+        log('TERMS', terms);
+    }
     getDicts(stems, function(err, dbdicts) {
-        // log('DBD', dbdicts);
-        // TODO: теперь установить соответствие между flakes и dbdicts
+        // log('DBD', err, dbdicts);
+        // TODO: теперь установить соответствие между chains и dbdicts
         cb(dbdicts);
     });
     // cb('ok');
