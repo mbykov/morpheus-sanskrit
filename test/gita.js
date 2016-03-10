@@ -11,7 +11,7 @@ var s = require('sandhi');
 var u = s.u;
 var c = s.const;
 var sandhi = s.sandhi;
-var outer = s.outer;
+// var outer = s.outer;
 var log = u.log;
 var p = u.p;
 var inc = u.include;
@@ -26,7 +26,7 @@ runGitaTests();
 
 function runGitaTests() {
     getDocs(function(docs) {
-        docs = docs.slice(45);
+        docs = docs.slice(54);
         var tests = [];
         var form, next, nextLine, trn, pdch;
         var dicts;

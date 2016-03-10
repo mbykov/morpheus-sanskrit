@@ -5,7 +5,8 @@ var s = require('sandhi');
 var c = s.const;
 var u = s.u;
 var sandhi = s.sandhi;
-var outer = s.outer;
+// var outer = s.outer;
+var inc = u.include;
 var log = u.log;
 var p = u.p;
 var rasper = require('flakes');
@@ -77,18 +78,36 @@ morpheus.prototype.run = function(samasa, next, cb) {
     // p(chains);
     // log('CHAINS size:', chains.length);
     var stems = _.uniq(_.flatten(chains));
-    log('STEMS to get', stems);
+    // log('STEMS to get', stems);
     if (next) {
         var beg = u.first(next);
         var fin = u.last(clean);
+        var penult = u.penult(clean);
         // log('SIMPLE', beg, u.isSimple(beg));
         var terms = chains.map(function(chain) { return u.last(chain)});
         terms = _.uniq(_.flatten(terms));
+
+        // по-моему, далее я опять воспроизвожу аккуратно outer.js:
         if (fin != c.e && u.isSimple(beg)) {
             var terms_e = terms.map(function(term) { return [term, c.e].join('')});
             stems = stems.concat(terms_e);
         }
-        log('TERMS', terms);
+        // log('FIN', fin, 'BEG', beg);
+        if (fin == c.o && inc(c.soft, beg)) {
+            var terms_o = terms.map(function(term) { return [u.wolast(term), c.visarga].join('') });
+            // log('OOOO', terms_o)
+            stems = stems.concat(terms_o);
+        }
+        if (fin == c.virama && inc(c.onlysoft, penult) && inc(c.soft, beg)) {
+            var terms_hard = terms.map(function(term) {
+                var hard_fin = u.class1(penult);
+                var hard = term.slice(0, -2);
+                return [hard, hard_fin, c.virama].join('');
+            });
+            log('SOFT TO HARD', terms)
+            stems = stems.concat(terms_hard);
+        }
+        // log('TERMS', terms);
     }
     getDicts(stems, function(err, dbdicts) {
         // log('DBD', err, dbdicts);
@@ -100,7 +119,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
 }
 
 
-// забрать реально существующие padas из BD
+// забрать реально существующие padas из BD, POST
 function getDicts(stems, cb) {
     var keys = {keys: stems};
     var view = 'gita-add/byForm';
