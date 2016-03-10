@@ -86,25 +86,43 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // log('SIMPLE', beg, u.isSimple(beg));
         var terms = chains.map(function(chain) { return u.last(chain)});
         terms = _.uniq(_.flatten(terms));
-
+        var odds = [];
+        var odd;
         // по-моему, далее я опять воспроизвожу аккуратно outer.js:
-        if (fin != c.e && u.isSimple(beg)) {
+        if (u.isConsonant(fin) && (u.isConsonant(beg) || u.isSimple(beg))) {
+            terms.forEach(function(term) {
+                if (inc(['स', 'एष'], term)) {
+                    odd = [term, c.visarga].join('');
+                    stems.push(odd);
+                    // log('SA - ESHA', odd);
+                }
+            });
+        }
+        if (u.isConsonant(fin) && u.isSimple(beg)) {
             var terms_e = terms.map(function(term) { return [term, c.e].join('')});
+            var terms_H = terms.map(function(term) { return [term, c.visarga].join('') });
             stems = stems.concat(terms_e);
+            stems = stems.concat(terms_H);
+            // log('OOOO', terms_e)
         }
         // log('FIN', fin, 'BEG', beg);
-        if (fin == c.o && inc(c.soft, beg)) {
+        else if (fin == c.o && inc(c.soft, beg)) {
             var terms_o = terms.map(function(term) { return [u.wolast(term), c.visarga].join('') });
             // log('OOOO', terms_o)
             stems = stems.concat(terms_o);
         }
-        if (fin == c.virama && inc(c.onlysoft, penult) && inc(c.soft, beg)) {
+        else if (fin == c.A && (inc(c.soft, beg) || inc(c.allvowels, beg))) {
+            var terms_A = terms.map(function(term) { return [term, c.visarga].join('') });
+            // log('OOOO', terms_o)
+            stems = stems.concat(terms_A);
+        }
+        else if (fin == c.virama && inc(c.onlysoft, penult) && inc(c.soft, beg)) {
             var terms_hard = terms.map(function(term) {
                 var hard_fin = u.class1(penult);
                 var hard = term.slice(0, -2);
                 return [hard, hard_fin, c.virama].join('');
             });
-            log('SOFT TO HARD', terms)
+            // log('SOFT TO HARD', terms)
             stems = stems.concat(terms_hard);
         }
         // log('TERMS', terms);
