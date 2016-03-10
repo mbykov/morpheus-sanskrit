@@ -86,7 +86,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // log('SIMPLE', beg, u.isSimple(beg));
         var terms = chains.map(function(chain) { return u.last(chain)});
         terms = _.uniq(_.flatten(terms));
-        var odds = [];
+        // var odds = [];
         var odd;
         // по-моему, далее я опять воспроизвожу аккуратно outer.js:
         if (u.isConsonant(fin) && (u.isConsonant(beg) || u.isSimple(beg))) {
@@ -98,12 +98,13 @@ morpheus.prototype.run = function(samasa, next, cb) {
                 }
             });
         }
-        if (u.isConsonant(fin) && u.isSimple(beg)) {
+        // log('=========', fin, u.isConsonant(fin), beg, u.isSimple(beg), c.allexa)
+        if (u.isConsonant(fin) && u.isVowExA(beg)) {
             var terms_e = terms.map(function(term) { return [term, c.e].join('')});
             var terms_H = terms.map(function(term) { return [term, c.visarga].join('') });
             stems = stems.concat(terms_e);
             stems = stems.concat(terms_H);
-            // log('OOOO', terms_e)
+            // log('OOOO', terms_H)
         }
         // log('FIN', fin, 'BEG', beg);
         else if (fin == c.o && inc(c.soft, beg)) {
@@ -127,6 +128,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
         }
         // log('TERMS', terms);
     }
+    log('STEMS to get', stems);
     getDicts(stems, function(err, dbdicts) {
         // log('DBD', err, dbdicts);
         // TODO: теперь установить соответствие между chains и dbdicts
@@ -144,6 +146,7 @@ function getDicts(stems, cb) {
     // log('morph-03 getDicts - SSS-new', keys.length);
     // FIXME: некузяво, keys вручную отдельно посылается через .send
     // и Content-Type отдельно прописан - так нельзя
+    // var keys = {keys: ['इहैव']};
     relax
         .postView(view)
         .send(keys)
@@ -163,9 +166,12 @@ function getDicts(stems, cb) {
 }
 
 function getDicts_(stems, cb) {
+    log('STEMS', stems);
+    // stems = ['रमते'];
     var keys = ['keys=', JSON.stringify(stems)].join('');
     var view = 'gita-add/byForm';
-    log('morph-03 getDicts - SSS-new', keys.length);
+    // var keys = ['keys=', JSON.stringify(['इहैव'])].join('');
+    log('morph-03 getDicts - SSS-new', keys);
     relax
         .view(view)
         .query(keys)
