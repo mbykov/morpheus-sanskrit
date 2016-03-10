@@ -128,7 +128,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
         }
         // log('TERMS', terms);
     }
-    log('STEMS to get', stems);
+    // log('STEMS to get', stems);
     getDicts(stems, function(err, dbdicts) {
         // log('DBD', err, dbdicts);
         // TODO: теперь установить соответствие между chains и dbdicts
@@ -170,12 +170,12 @@ function getDicts_(stems, cb) {
     // stems = ['रमते'];
     var keys = ['keys=', JSON.stringify(stems)].join('');
     var view = 'gita-add/byForm';
-    // var keys = ['keys=', JSON.stringify(['इहैव'])].join('');
+    var keys = ['keys=', JSON.stringify(['इहैव'])].join('');
     log('morph-03 getDicts - SSS-new', keys);
     relax
         .view(view)
         .query(keys)
-    // .query({include_docs: true})
+    // .query({include_docs: true}) // 'वर्तेतः'
         .query({limit: 100})
         .end(function(err, res) {
             if (err) log('ERR morph getDicts', err, res);
