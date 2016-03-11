@@ -26,7 +26,7 @@ runGitaTests();
 
 function runGitaTests() {
     getDocs(function(docs) {
-        docs = docs.slice(355);
+        // docs = docs.slice(600);
         var tests = [];
         var form, next, nextLine, trn, pdch;
         var dicts;
@@ -38,6 +38,9 @@ function runGitaTests() {
                 form = line.form;
                 if (form == 'शक्नोतीहैव') return; // FIXME: FIXME: FIXME: इहैव не достается из базы, 5.23 // slice(226, 238) // आत्मैव
                 if (form == 'वर्तेतात्मैव') return; // FIXME: FIXME: FIXME: इहैव не достается из базы, 6.6 // slice(238) // आत्मैव
+                if (form == 'यावान्यश्चास्मि') return; // тоже нет второй пады, चास्मि - но тут нет aiva
+                if (form == 'त्वात्मैव') return; // тоже нет второй пады, आत्मैव
+
                 if (form.length > 19) return;
                 nextLine = doc.lines[idy+1];
                 next = (nextLine) ? nextLine.form : null;
