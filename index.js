@@ -10,6 +10,7 @@ var inc = u.include;
 var log = u.log;
 var p = u.p;
 var rasper = require('flakes');
+var outer = require('./lib/outer');
 
 dbpath = 'http://admin:kjre4317@localhost:5984';
 var Relax = require('relax-component');
@@ -71,63 +72,14 @@ function morpheus() {
 // должен возвращать полностью сформированный список вариантов с весами-вероятностями
 morpheus.prototype.run = function(samasa, next, cb) {
     if (!next) next = 'इ'; // FIXME:
-    var clean = correctM(samasa);
-    // var clean = outer(samasa, next);
+    var clean = outer.correctM(samasa, next);
     // log('CLEAN', clean);
     var chains = rasper.cut(clean);
     // p(chains);
     // log('CHAINS size:', chains.length);
     var stems = _.uniq(_.flatten(chains));
     // log('STEMS to get', stems);
-    if (next) {
-        var beg = u.first(next);
-        var fin = u.last(clean);
-        var penult = u.penult(clean);
-        // log('SIMPLE', beg, u.isSimple(beg));
-        var terms = chains.map(function(chain) { return u.last(chain)});
-        terms = _.uniq(_.flatten(terms));
-        // var odds = [];
-        var odd;
-        // по-моему, далее я опять воспроизвожу аккуратно outer.js:
-        if (u.isConsonant(fin) && (u.isConsonant(beg) || u.isSimple(beg))) {
-            terms.forEach(function(term) {
-                if (inc(['स', 'एष'], term)) {
-                    odd = [term, c.visarga].join('');
-                    stems.push(odd);
-                    // log('SA - ESHA', odd);
-                }
-            });
-        }
-        // log('=========', fin, u.isConsonant(fin), beg, u.isSimple(beg), c.allexa)
-        if (u.isConsonant(fin) && u.isVowExA(beg)) {
-            var terms_e = terms.map(function(term) { return [term, c.e].join('')});
-            var terms_H = terms.map(function(term) { return [term, c.visarga].join('') });
-            stems = stems.concat(terms_e);
-            stems = stems.concat(terms_H);
-            // log('OOOO', terms_H)
-        }
-        // log('FIN', fin, 'BEG', beg);
-        else if (fin == c.o && inc(c.soft, beg)) {
-            var terms_o = terms.map(function(term) { return [u.wolast(term), c.visarga].join('') });
-            // log('OOOO', terms_o)
-            stems = stems.concat(terms_o);
-        }
-        else if (fin == c.A && (inc(c.soft, beg) || inc(c.allvowels, beg))) {
-            var terms_A = terms.map(function(term) { return [term, c.visarga].join('') });
-            // log('OOOO', terms_o)
-            stems = stems.concat(terms_A);
-        }
-        else if (fin == c.virama && inc(c.onlysoft, penult) && inc(c.soft, beg)) {
-            var terms_hard = terms.map(function(term) {
-                var hard_fin = u.class1(penult);
-                var hard = term.slice(0, -2);
-                return [hard, hard_fin, c.virama].join('');
-            });
-            // log('SOFT TO HARD', terms)
-            stems = stems.concat(terms_hard);
-        }
-        // log('TERMS', terms);
-    }
+    if (next) stems = outer.odd(chains, stems, clean, next);
     // log('STEMS to get', stems);
     getDicts(stems, function(err, dbdicts) {
         // log('DBD', err, dbdicts);

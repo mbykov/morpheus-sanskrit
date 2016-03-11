@@ -26,7 +26,7 @@ runGitaTests();
 
 function runGitaTests() {
     getDocs(function(docs) {
-        // docs = docs.slice(600);
+        docs = docs.slice(8);
         var tests = [];
         var form, next, nextLine, trn, pdch;
         var dicts;
