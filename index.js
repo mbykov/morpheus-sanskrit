@@ -80,13 +80,23 @@ function filterPadas(chains, queries, dbdicts) {
     });
     // log('C', chains)
     // log('D', dicts);
+    /*
+      найденные - или создавать объект, ok: true
+      weight - total - сумма квадратов - зачем квадратов?
+     */
     var pdchs = [];
     chains.forEach(function(chain) {
+        var total = chain.map(function(pada) { return pada.length});
+        total =  _.reduce(total, function(memo, num){ return memo + num; });
         var pdch = {chain: chain, weigth: 0};
+        // var ok = true;
         dicts.forEach(function(dict) {
-            if (inc(chain, dict.pada)) pdch.weigth += Math.pow(dict.pada.length, 2);
+            if (inc(chain, dict.pada)) pdch.weigth += dict.pada.length; // Math.pow(dict.pada.length, 2);
         });
-        if (pdch.weigth > 0) pdchs.push(pdch);
+        if (pdch.weigth > 0) {
+            pdch.weigth = (pdch.weigth/total).toFixed(1);
+            pdchs.push(pdch);
+        }
     });
     pdchs = _.sortBy(pdchs, function(pdch) { return pdch.weigth}).reverse();
     log('PDCHS', pdchs);
