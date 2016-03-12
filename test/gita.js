@@ -41,10 +41,11 @@ function runGitaTests() {
                 if (form == 'यावान्यश्चास्मि') return; // тоже нет второй пады, चास्मि - но тут нет aiva
                 if (form == 'त्वात्मैव') return; // тоже нет второй пады, आत्मैव
 
+                if (form.indexOf('ऽ') > -1) return; // потому что avagraha обрабатывается иначе - деление всегда сразу по ней
                 if (form.length > 19) return;
                 nextLine = doc.lines[idy+1];
                 next = (nextLine) ? nextLine.form : null;
-                if (next == '।') next = null;
+                // if (next == '।') next = null;
                 if (form == '।') return;
                 pdch = line.dicts.map(function(dict) { return correctM(dict.form) });
                 var test = {idx: idx, sutra: doc.num, form: form, next: next, pdch: pdch};

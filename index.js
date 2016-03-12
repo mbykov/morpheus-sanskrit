@@ -48,22 +48,26 @@ morpheus.prototype.run = function(samasa, next, cb) {
     }
     // log('QUERIES to get', queries);
     // log('STEMS to get', stems);
+
     getDicts(stems, function(err, dbdicts) {
+    // getDictsSa(stems, function(err, dbdicts) {
         // log('DBD', err, dbdicts);
         // TODO: теперь установить соответствие между chains и dbdicts
-        var pdchs = filterPadas(chains, queries, dbdicts);
-        log('PDCHS', pdchs);
-        // в тесты нужно отдать dbdicts, а наверх - pdchs?
+        // в сводном словаре dbdicts - не уникальны
+        // var pdchs = filterPadas(chains, queries, dbdicts);
+        // log('PDCHS', pdchs);
         cb(dbdicts);
     });
     // cb('ok');
     return;
 }
 
+// соответствие dbdict и queries - может быть много dbdicts на один stem
+// здесь формируется один dict, имеющий type: MW, Apte, BG, etc
 function filterPadas(chains, queries, dbdicts) {
-    // log('Q', queries)
-    // log('D', dbdicts)
-    // log('C', chains.length)
+    log('Q', queries)
+    log('D', dbdicts) // <=== вот тут вот неединственность
+    log('C', chains.length)
     var dicts = [];
     dbdicts.forEach(function(dbdict) {
         var dict = {};
@@ -80,27 +84,46 @@ function filterPadas(chains, queries, dbdicts) {
     });
     // log('C', chains)
     // log('D', dicts);
+    return dicts;
+
     /*
-      найденные - или создавать объект, ok: true
-      weight - total - сумма квадратов - зачем квадратов?
+      ой-ой, а в реале-MW dicts-то может быть много на одни stem ? term, BG, MW, Apte ?
+      то есть dicts нельзя просто в цикле крутить
      */
     var pdchs = [];
+    var holeys = [];
+    var total = Math.pow(chains[0].join('').length, 2);
     chains.forEach(function(chain) {
-        var total = chain.map(function(pada) { return pada.length});
-        total =  _.reduce(total, function(memo, num){ return memo + num; });
+        // var total = chain.map(function(pada) { return pada.length});
+        // total =  _.reduce(total, function(memo, num){ return memo + num; });
         var pdch = {chain: chain, weigth: 0};
-        // var ok = true;
+        var ok = 0;
         dicts.forEach(function(dict) {
-            if (inc(chain, dict.pada)) pdch.weigth += dict.pada.length; // Math.pow(dict.pada.length, 2);
+            if (inc(chain, dict.pada)) {
+                pdch.weigth += Math.pow(dict.pada.length, 2);
+                // dict.ok = true; // бессмысленно, ибо всегда найдется
+                ok += 1;
+            }
         });
         if (pdch.weigth > 0) {
-            pdch.weigth = (pdch.weigth/total).toFixed(1);
-            pdchs.push(pdch);
+            pdch.weigth = (pdch.weigth/total).toFixed(2);
+            if (ok == chain.length) pdchs.push(pdch);
+            else holeys.push(pdch)
         }
     });
-    pdchs = _.sortBy(pdchs, function(pdch) { return pdch.weigth}).reverse();
-    log('PDCHS', pdchs);
-    return [];
+    // м.б. сразу добавлять в решение dict?
+    // var cdicts = _.select(dicts, function(dict) { return dict.ok });
+    if (pdchs.length > 0) {
+        pdchs = _.sortBy(pdchs, function(pdch) { return pdch.weigth}).reverse();
+        return pdchs;
+    } else {
+        holeys = _.sortBy(holeys, function(pdch) { return pdch.weigth}).reverse();
+        holeys = holeys.slice(0, 3);
+        return {ok: false, pdchs: holeys};
+        // return holeys;
+    }
+    // log('PDCHS', pdchs);
+    // return [];
 }
 
 function options(samasa, next) {
@@ -113,12 +136,12 @@ function options(samasa, next) {
 
 
 // забрать реально существующие padas из BD, POST
+// gita-add имеет единственный stem по определению
 function getDicts(stems, cb) {
     var keys = {keys: stems};
     var view = 'gita-add/byForm';
-    // log('morph-03 getDicts - SSS-new', keys.length);
-    // FIXME: некузяво, keys вручную отдельно посылается через .send
-    // и Content-Type отдельно прописан - так нельзя
+    log('morph-03 getDicts - POST', JSON.stringify(keys));
+    // FIXME: Content-Type отдельно прописан - так нельзя
     // var keys = {keys: ['इहैव']};
     relax
         .postView(view)
@@ -138,12 +161,13 @@ function getDicts(stems, cb) {
         });
 }
 
-function getDicts_(stems, cb) {
-    log('STEMS', stems);
+function getDictsSa(stems, cb) {
+    // log('STEMS', stems);
     // stems = ['रमते'];
+    relax.dbname('sa');
+    var view = 'sa/sa';
     var keys = ['keys=', JSON.stringify(stems)].join('');
-    var view = 'gita-add/byForm';
-    var keys = ['keys=', JSON.stringify(['इहैव'])].join('');
+    // var keys = ['keys=', JSON.stringify(['इहैव'])].join('');
     log('morph-03 getDicts - SSS-new', keys);
     relax
         .view(view)
@@ -151,7 +175,8 @@ function getDicts_(stems, cb) {
     // .query({include_docs: true}) // 'वर्तेतः'
         .query({limit: 100})
         .end(function(err, res) {
-            if (err) log('ERR morph getDicts', err, res);
+            // log('RES morph getDicts', res);
+            // log('ERR morph getDicts', err);
             if (err) return cb(err, null);
             var rows = JSON.parse(res.text.trim()).rows;
             // log('ROWS', rows);
