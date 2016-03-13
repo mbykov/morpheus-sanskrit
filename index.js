@@ -11,6 +11,7 @@ var log = u.log;
 var p = u.p;
 var rasper = require('flakes');
 var outer = require('./lib/outer');
+var stemmer = require('../stemmer');
 
 dbpath = 'http://admin:kjre4317@localhost:5984';
 var Relax = require('relax-component');
@@ -47,7 +48,20 @@ morpheus.prototype.run = function(samasa, next, cb) {
         stems = queries.map(function(q) {return q.stem});
     }
     // log('QUERIES to get', queries);
-    // log('STEMS to get', stems);
+    log('STEMS to get', stems.length);
+
+    // добавляю stems по tin-sup флексиям
+    var tinsups = [];
+    stems.forEach(function(stem) {
+        if (syllables(stem) < 4) return;
+        var qs = stemmer.get(stem);
+        var qstems = qs.map(function(q) { return q.query});
+        tinsups = tinsups.concat(qstems);
+    });
+    stems = stems.concat(tinsups);
+    stems = _.uniq(stems);
+    log('STEMS to get', stems.length);
+
 
     // getDicts(stems, function(err, dbdicts) {
     getDictsSa(stems, function(err, dbdicts) {
@@ -170,31 +184,51 @@ function getDictsSa(stems, cb) {
     var view = 'mw/byStem';
     var keys = ['keys=', JSON.stringify(stems)].join('');
     // var keys = ['keys=', JSON.stringify(['इहैव'])].join('');
-    log('morph-03 getDicts - MW-new', keys);
+    log('morph-03 getDicts ===== MW-new');
     relax
         .view(view)
         .query(keys)
-    // .query({include_docs: true}) // 'वर्तेतः'
+        .query({include_docs: true})
         .query({limit: 100})
         .end(function(err, res) {
             // log('RES morph getDicts', res);
             // log('ERR morph getDicts', err);
             if (err) return cb(err, null);
             var rows = JSON.parse(res.text.trim()).rows;
-            // log('ROWS', rows);
-            // var docs = _.map(rows, function(row) {
-            // var doc = row.doc;
-            // return doc;
-            // });
-            // в Гите значения dicts повторяются с разными переводами, в других словарях нужен будет .doc
-            var docs = _.map(rows, function(row) {
-                var doc = {stem: row.key, trn: row.value};
+            // var stems =  _.uniq(rows.map(function(row) { return row.key }));
+            var docs =  _.uniq(rows.map(function(row) { return row.doc }));
+            cb(err, docs);
+            return;
+            // дальше пока лишнее, сначала лучше выбрать только значимые stems;
+            // попытка здесь же сформировать правильные docs, как в ответе:
+
+            var stems =  _.uniq(rows.map(function(row) { return row.key }));
+            log('KEYS:', stems);
+            var rawdocs = rows.map(function(row) { return row.doc });
+            var docs = stems.map(function(stem) {
+                var doc = {stem: stem, dict: 'mw', dicts: []};
+                rawdocs.forEach(function(raw) {
+                    if (raw.sa != stem) return;
+                    var dict = {stem: raw.sa, slp: raw.slp, lex: raw.lex};
+                    doc.dicts.push(dict);
+                });
                 return doc;
             });
             cb(err, docs);
         });
 }
 
+
+function syllables(flake) {
+    var syms = flake.split('');
+    var beg = syms[0];
+    var vows = (u.isVowel(beg)) ? 1 : 0;
+    syms.forEach(function(s) {
+        if (u.isConsonant(s)) vows+=1;
+        else if (s == c.virama) vows-=1;
+    });
+    return vows;
+}
 
 
 // ===========================================
