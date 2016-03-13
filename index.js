@@ -49,8 +49,8 @@ morpheus.prototype.run = function(samasa, next, cb) {
     // log('QUERIES to get', queries);
     // log('STEMS to get', stems);
 
-    getDicts(stems, function(err, dbdicts) {
-    // getDictsSa(stems, function(err, dbdicts) {
+    // getDicts(stems, function(err, dbdicts) {
+    getDictsSa(stems, function(err, dbdicts) {
         // log('DBD', err, dbdicts);
         // TODO: теперь установить соответствие между chains и dbdicts
         // в сводном словаре dbdicts - не уникальны
@@ -140,7 +140,7 @@ function options(samasa, next) {
 function getDicts(stems, cb) {
     var keys = {keys: stems};
     var view = 'gita-add/byForm';
-    log('morph-03 getDicts - POST', JSON.stringify(keys));
+    // log('morph-03 getDicts - POST', JSON.stringify(keys));
     // FIXME: Content-Type отдельно прописан - так нельзя
     // var keys = {keys: ['इहैव']};
     relax
@@ -164,11 +164,13 @@ function getDicts(stems, cb) {
 function getDictsSa(stems, cb) {
     // log('STEMS', stems);
     // stems = ['रमते'];
-    relax.dbname('sa');
-    var view = 'sa/sa';
+    // relax.dbname('sa');
+    // var view = 'sa/sa';
+    relax.dbname('mw');
+    var view = 'mw/byStem';
     var keys = ['keys=', JSON.stringify(stems)].join('');
     // var keys = ['keys=', JSON.stringify(['इहैव'])].join('');
-    log('morph-03 getDicts - SSS-new', keys);
+    log('morph-03 getDicts - MW-new', keys);
     relax
         .view(view)
         .query(keys)

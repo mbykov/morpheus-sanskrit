@@ -78,7 +78,7 @@ function checkTest(test, cb) {
             log('test:', test);
             throw new Error();
         } else {
-            log('OK', salat, samasa);
+            log('OK', test.idx, salat, samasa);
             return cb(null, salat);
         }
     }); // morph
@@ -86,7 +86,7 @@ function checkTest(test, cb) {
 
 function getDocs(cb) {
     relax
-        .all([])
+        .all()
     // .query(query)
         .query({include_docs: true})
         // .query({limit: 10000})
