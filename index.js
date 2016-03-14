@@ -39,71 +39,83 @@ morpheus.prototype.run = function(samasa, next, cb) {
     terms = _.uniq(_.flatten(terms));
     // log('CHAINS size:', chains.length);
     var stems = _.uniq(_.flatten(chains));
-    var queries = stems.map(function(stem) { return {stem: stem}});
+    var queries = stems.map(function(stem) { return {query: stem}});
 
     if (next) {
         var odds = outer.odd(terms, opt, clean, next);
-        // log('odds', odds)
+        // log('odds', odds);
         queries = queries.concat(odds);
-        stems = queries.map(function(q) {return q.stem});
     }
-    // log('QUERIES to get', queries);
+    log('QUERIES to get', queries);
     log('STEMS to get', stems.length);
 
     // добавляю stems по tin-sup флексиям
-    var tinsups = [];
-    stems.forEach(function(stem) {
-        if (syllables(stem) < 4) return;
+    var stem;
+    queries.forEach(function(q) {
+        stem = q.query;
+        if (syllables(stem) < 2) return;
         var qs = stemmer.get(stem);
-        var qstems = qs.map(function(q) { return q.query});
-        tinsups = tinsups.concat(qstems);
+        if (stem == 'ऊपस्थे') log('===========', qs);
+        qs.forEach(function(q) { q.flake = stem});
+        // log('QS', stem, qs);
+        queries = queries.concat(qs);
     });
-    stems = stems.concat(tinsups);
-    stems = _.uniq(stems);
-    log('STEMS to get', stems.length);
+    var qstems = _.uniq(queries.map(function(q) { return q.query}));
+    log('QSTEMS to get', JSON.stringify(qstems));
 
-
-    // getDicts(stems, function(err, dbdicts) {
-    getDictsSa(stems, function(err, dbdicts) {
+    // getDicts(qstems, function(err, dbdicts) {
+    getDictsSa(qstems, function(err, dbdicts) {
         // log('DBD', err, dbdicts);
         // TODO: теперь установить соответствие между chains и dbdicts
-        // в сводном словаре dbdicts - не уникальны
-        // var pdchs = filterPadas(chains, queries, dbdicts);
-        // log('PDCHS', pdchs);
-        cb(dbdicts);
+        var flakes = dict2query(queries, dbdicts);
+        log('D', flakes);
+        // log('PDCHS', pdchs[0]);
+        // cb(dbdicts);
     });
-    // cb('ok');
+    cb('ok');
     return;
 }
 
-// соответствие dbdict и queries - может быть много dbdicts на один stem
-// здесь формируется один dict, имеющий type: MW, Apte, BG, etc
-function filterPadas(chains, queries, dbdicts) {
-    log('Q', queries)
-    log('D', dbdicts) // <=== вот тут вот неединственность
-    log('C', chains.length)
-    var dicts = [];
-    dbdicts.forEach(function(dbdict) {
-        var dict = {};
-        queries.forEach(function(q) {
-            if (dbdict.stem != q.stem) return;
-                // dict.pada = q.stem;
-            if (q.raw) {
-                dict.pada = q.raw;
-                dict.form = q.stem;
-            } else dict.pada = q.stem;
-            dict.trn = dbdict.trn;
-            dicts.push(dict);
+// { _id: '2c7a4b831b6a47080e218ea923fec295',
+//   _rev: '1-6cdd7c9061bc982c969e8c6eef4228f2',
+//   slp: 'upasTa',
+//   sa: 'उपस्थ',
+//   slps: [ 'upa', 'sTa' ],
+//   padas: [ 'उप', 'स्थ' ],
+//   lex: { mfn: [Object], '?': [Object] },
+//   name: true },
+
+// соответствие dbdict и queries - может быть много dbdicts на один query
+// здесь каждому flake ставится в соответствие набор dicts
+function dict2query(queries, dbdicts) {
+    // log('Q', queries)
+    // log('D', dbdicts.length) // <=== вот тут вот неединственность
+    var fstems = queries.map(function(q) {
+        // return q.flake || q.query; // простейшие, из chain, не имеют flake
+        return q.query;
+    });
+    fstems = _.uniq(fstems);
+    var flakes = {};
+    fstems.forEach(function(flake) {
+        dbdicts.forEach(function(dbdict) {
+            // log('DBDICT', dbdict)
+            if (dbdict.sa != flake) return; // FIXME: SA=STEM
+            var dict = {};
+            // dict.flake = flake;
+            if (dbdict.lex) dict.lex = dbdict.lex;
+            if (dbdict.vlex) dict.vlex = dbdict.vlex;
+            if (!flakes[flake]) flakes[flake] = [];
+            flakes[flake].push(dict);
         });
     });
-    // log('C', chains)
-    // log('D', dicts);
-    return dicts;
-
+    return flakes;
+}
     /*
       ой-ой, а в реале-MW dicts-то может быть много на одни stem ? term, BG, MW, Apte ?
       то есть dicts нельзя просто в цикле крутить
      */
+function filterPadas_(chains, queries, dbdicts) { // <<<=== это продолжение обработки chains, механически скопирован заголовок из прежней функции
+    // log('C', chains)
     var pdchs = [];
     var holeys = [];
     var total = Math.pow(chains[0].join('').length, 2);
@@ -199,22 +211,22 @@ function getDictsSa(stems, cb) {
             var docs =  _.uniq(rows.map(function(row) { return row.doc }));
             cb(err, docs);
             return;
+
             // дальше пока лишнее, сначала лучше выбрать только значимые stems;
             // попытка здесь же сформировать правильные docs, как в ответе:
-
-            var stems =  _.uniq(rows.map(function(row) { return row.key }));
-            log('KEYS:', stems);
-            var rawdocs = rows.map(function(row) { return row.doc });
-            var docs = stems.map(function(stem) {
-                var doc = {stem: stem, dict: 'mw', dicts: []};
-                rawdocs.forEach(function(raw) {
-                    if (raw.sa != stem) return;
-                    var dict = {stem: raw.sa, slp: raw.slp, lex: raw.lex};
-                    doc.dicts.push(dict);
-                });
-                return doc;
-            });
-            cb(err, docs);
+            // var stems =  _.uniq(rows.map(function(row) { return row.key }));
+            // log('KEYS:', stems);
+            // var rawdocs = rows.map(function(row) { return row.doc });
+            // var docs = stems.map(function(stem) {
+            //     var doc = {stem: stem, dict: 'mw', dicts: []};
+            //     rawdocs.forEach(function(raw) {
+            //         if (raw.sa != stem) return;
+            //         var dict = {stem: raw.sa, slp: raw.slp, lex: raw.lex};
+            //         doc.dicts.push(dict);
+            //     });
+            //     return doc;
+            // });
+            // cb(err, docs);
         });
 }
 
