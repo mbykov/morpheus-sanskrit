@@ -63,12 +63,12 @@ morpheus.prototype.run = function(samasa, next, cb) {
     var qstems = _.uniq(queries.map(function(q) { return q.query}));
     log('QSTEMS to get', JSON.stringify(qstems));
 
-    // getDicts(qstems, function(err, dbdicts) {
-    getDictsSa(qstems, function(err, dbdicts) {
-        // log('DBD', err, dbdicts);
+    getDicts(qstems, function(err, dbdicts) {
+    // getDictsSa(qstems, function(err, dbdicts) {
+        // log('DBD', err, dbdicts.length);
         // TODO: теперь установить соответствие между chains и dbdicts
         var flakes = dict2query(queries, dbdicts);
-        log('D', flakes);
+        log('D-flakes', flakes);
         // log('PDCHS', pdchs[0]);
         // cb(dbdicts);
     });
@@ -165,7 +165,9 @@ function options(samasa, next) {
 // gita-add имеет единственный stem по определению
 function getDicts(stems, cb) {
     var keys = {keys: stems};
-    var view = 'gita-add/byForm';
+    // var view = 'gita-add/byForm';
+    relax.dbname('mw');
+    var view = 'mw/byStem';
     // log('morph-03 getDicts - POST', JSON.stringify(keys));
     // FIXME: Content-Type отдельно прописан - так нельзя
     // var keys = {keys: ['इहैव']};
@@ -173,16 +175,18 @@ function getDicts(stems, cb) {
         .postView(view)
         .send(keys)
         // .query({limit: 100})
-        // .query({include_docs: true})
+        .query({include_docs: true})
         .set('Content-Type', 'application/json')
         .end(function(err, res) {
             // if (err) log('ERR morph getDicts', err, res);
             if (err) return cb(err, null);
             var rows = JSON.parse(res.text.trim()).rows;
-            var docs = _.map(rows, function(row) {
-                var doc = {stem: row.key, trn: row.value};
-                return doc;
-            });
+            var docs =  _.uniq(rows.map(function(row) { return row.doc }));
+            // gita-add:
+            // var docs = _.map(rows, function(row) {
+            //     var doc = {stem: row.key, trn: row.value};
+            //     return doc;
+            // });
             cb(err, docs);
         });
 }
