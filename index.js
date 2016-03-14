@@ -70,11 +70,18 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // TODO: теперь установить соответствие между chains и dbdicts
         // var fdicts = dict4flake(queries, dbdicts);
         // log('D-flakes', fdicts);
-        // выбрать только те flakes, query которых найдены в dicts
+        // выбрать только те flakes, query которых найдены в dicts:
         var dstems = dbdicts.map(function(dict) { return dict.sa});
-        var flakes = _.intersection(qstems, dstems);
+        var flakes = [];
+        queries.forEach(function(q) {
+            if (inc(dstems, q.query)) flakes.push(q.flake || q.query);
+        });
+        flakes =_.uniq(flakes);
 
         // var flakes = _.uniq(queries.map(function(q) { return q.flake || q.query}));
+        // log('FLAKES-Q', inc(qstems, 'अर्जुन'));
+        // log('FLAKES-D', inc(dstems, 'अर्जुन'));
+        // log('FLAKES-F', inc(dstems, 'अर्जुन'));
         log('FLAKES', flakes);
         var pdchs = filterChain(chains, flakes);
         //
@@ -89,9 +96,10 @@ morpheus.prototype.run = function(samasa, next, cb) {
 // м.б. считать syllables, а не length ? чтобы flexes не лезли вперед, а length - наоборот, уменьшить weight ?
 // второе - лучше бы наверх - простейшие, т.е. flake=query ?
 function filterChain(chains, flakes) {
-    log('C', chains)
+    // log('C', chains)
     var pdchs = [];
     var holeys = [];
+    var bads = [];
     var total = Math.pow(chains[0].join('').length, 2);
     chains.forEach(function(chain) {
         var pdch = {chain: chain, weigth: 0};
@@ -105,19 +113,22 @@ function filterChain(chains, flakes) {
         if (pdch.weigth > 0) {
             pdch.weigth = (pdch.weigth/total).toFixed(2);
             if (ok == chain.length) pdchs.push(pdch);
-            else holeys.push(pdch)
+            else if (ok -1 == chain.length) holeys.push(pdch);
+            else holeys.push(pdch);
         }
     });
-    // if (pdchs.length > 0) {
-        pdchs = _.sortBy(pdchs, function(pdch) { return pdch.weigth}).reverse();
-        // return pdchs;
-    // } else {
+    var res = {};
+    if (pdchs.length > 0) {
+        res.pdchs = _.sortBy(pdchs, function(pdch) { return pdch.weigth}).reverse();
+    } else {
         holeys = _.sortBy(holeys, function(pdch) { return pdch.weigth}).reverse();
-        holeys = holeys.slice(0, 5);
-        // return {ok: false, pdchs: holeys};
-        // return holeys;
+        res.holeys = holeys.slice(0, 25);
+    }
+    // if (pdchs.length == 0 && holeys.length == 0) {
+        // bads = _.sortBy(holeys, function(pdch) { return pdch.weigth}).reverse();
+        // res.bads = holeys.slice(0, 25);
     // }
-    return {pdchs: pdchs, holyes: holeys};
+    return res;
 }
 
 
