@@ -46,8 +46,8 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // log('odds', odds);
         queries = queries.concat(odds);
     }
-    log('QUERIES to get', queries);
-    log('STEMS to get', stems.length);
+    // log('QUERIES to get', queries);
+    log('STEMS-flakes to get', stems.length);
 
     // добавляю stems по tin-sup флексиям
     var stem;
@@ -55,79 +55,50 @@ morpheus.prototype.run = function(samasa, next, cb) {
         stem = q.query;
         if (syllables(stem) < 2) return;
         var qs = stemmer.get(stem);
-        if (stem == 'ऊपस्थे') log('===========', qs);
+        // if (stem == 'ऊपस्थे') log('===========', qs);
         qs.forEach(function(q) { q.flake = stem});
         // log('QS', stem, qs);
         queries = queries.concat(qs);
     });
     var qstems = _.uniq(queries.map(function(q) { return q.query}));
-    log('QSTEMS to get', JSON.stringify(qstems));
+    // log('QSTEMS to get', JSON.stringify(qstems));
+    log('QSTEMS-all to get', qstems.length);
 
     getDicts(qstems, function(err, dbdicts) {
     // getDictsSa(qstems, function(err, dbdicts) {
         // log('DBD', err, dbdicts.length);
         // TODO: теперь установить соответствие между chains и dbdicts
-        var flakes = dict2query(queries, dbdicts);
-        log('D-flakes', flakes);
-        // log('PDCHS', pdchs[0]);
+        // var fdicts = dict4flake(queries, dbdicts);
+        // log('D-flakes', fdicts);
+        // выбрать только те flakes, query которых найдены в dicts
+        var dstems = dbdicts.map(function(dict) { return dict.sa});
+        var flakes = _.intersection(qstems, dstems);
+
+        // var flakes = _.uniq(queries.map(function(q) { return q.flake || q.query}));
+        log('FLAKES', flakes);
+        var pdchs = filterChain(chains, flakes);
+        //
+        // log('PDCHS', pdchs);
         // cb(dbdicts);
+        cb(pdchs);
     });
-    cb('ok');
+    // cb('ok');
     return;
 }
 
-// { _id: '2c7a4b831b6a47080e218ea923fec295',
-//   _rev: '1-6cdd7c9061bc982c969e8c6eef4228f2',
-//   slp: 'upasTa',
-//   sa: 'उपस्थ',
-//   slps: [ 'upa', 'sTa' ],
-//   padas: [ 'उप', 'स्थ' ],
-//   lex: { mfn: [Object], '?': [Object] },
-//   name: true },
-
-// соответствие dbdict и queries - может быть много dbdicts на один query
-// здесь каждому flake ставится в соответствие набор dicts
-function dict2query(queries, dbdicts) {
-    // log('Q', queries)
-    // log('D', dbdicts.length) // <=== вот тут вот неединственность
-    var fstems = queries.map(function(q) {
-        // return q.flake || q.query; // простейшие, из chain, не имеют flake
-        return q.query;
-    });
-    fstems = _.uniq(fstems);
-    var flakes = {};
-    fstems.forEach(function(flake) {
-        dbdicts.forEach(function(dbdict) {
-            // log('DBDICT', dbdict)
-            if (dbdict.sa != flake) return; // FIXME: SA=STEM
-            var dict = {};
-            // dict.flake = flake;
-            if (dbdict.lex) dict.lex = dbdict.lex;
-            if (dbdict.vlex) dict.vlex = dbdict.vlex;
-            if (!flakes[flake]) flakes[flake] = [];
-            flakes[flake].push(dict);
-        });
-    });
-    return flakes;
-}
-    /*
-      ой-ой, а в реале-MW dicts-то может быть много на одни stem ? term, BG, MW, Apte ?
-      то есть dicts нельзя просто в цикле крутить
-     */
-function filterPadas_(chains, queries, dbdicts) { // <<<=== это продолжение обработки chains, механически скопирован заголовок из прежней функции
-    // log('C', chains)
+// м.б. считать syllables, а не length ? чтобы flexes не лезли вперед, а length - наоборот, уменьшить weight ?
+// второе - лучше бы наверх - простейшие, т.е. flake=query ?
+function filterChain(chains, flakes) {
+    log('C', chains)
     var pdchs = [];
     var holeys = [];
     var total = Math.pow(chains[0].join('').length, 2);
     chains.forEach(function(chain) {
-        // var total = chain.map(function(pada) { return pada.length});
-        // total =  _.reduce(total, function(memo, num){ return memo + num; });
         var pdch = {chain: chain, weigth: 0};
         var ok = 0;
-        dicts.forEach(function(dict) {
-            if (inc(chain, dict.pada)) {
-                pdch.weigth += Math.pow(dict.pada.length, 2);
-                // dict.ok = true; // бессмысленно, ибо всегда найдется
+        flakes.forEach(function(flake) {
+            if (inc(chain, flake)) {
+                pdch.weigth += Math.pow(flake.length, 2);
                 ok += 1;
             }
         });
@@ -137,19 +108,41 @@ function filterPadas_(chains, queries, dbdicts) { // <<<=== это продол�
             else holeys.push(pdch)
         }
     });
-    // м.б. сразу добавлять в решение dict?
-    // var cdicts = _.select(dicts, function(dict) { return dict.ok });
-    if (pdchs.length > 0) {
+    // if (pdchs.length > 0) {
         pdchs = _.sortBy(pdchs, function(pdch) { return pdch.weigth}).reverse();
-        return pdchs;
-    } else {
+        // return pdchs;
+    // } else {
         holeys = _.sortBy(holeys, function(pdch) { return pdch.weigth}).reverse();
-        holeys = holeys.slice(0, 3);
-        return {ok: false, pdchs: holeys};
+        holeys = holeys.slice(0, 5);
+        // return {ok: false, pdchs: holeys};
         // return holeys;
-    }
-    // log('PDCHS', pdchs);
-    // return [];
+    // }
+    return {pdchs: pdchs, holyes: holeys};
+}
+
+
+// соответствие dbdict и queries - может быть много dbdicts на один query
+// здесь каждому flake ставится в соответствие набор dicts, на будущее - нужно в интерфейсе, при выводе dicts для flakes
+// нормально, но я здесь обрабатываю ВСЕ flakes, включая ненужные
+// и здесь я тащу словари за собой в фильтр chains, so . . . переделать на только нужные
+function dict4flake(queries, dbdicts) {
+    log('Queries', queries.length)
+    log('Dbdicts', dbdicts.length) // <=== вот тут вот неединственность
+    var fdicts = {};
+    queries.forEach(function(q) {
+        dbdicts.forEach(function(dbdict) {
+            // log('DBDICT', dbdict)
+            var flake = q.flake || q.query; // простейшие, из chain, не имеют .flake
+            if (dbdict.sa != q.query) return;
+            var dict = {};
+            // dict.flake = flake;
+            if (dbdict.lex) dict.lex = dbdict.lex;
+            if (dbdict.vlex) dict.vlex = dbdict.vlex;
+            if (!fdicts[flake]) fdicts[flake] = [];
+            fdicts[flake].push(dict);
+        });
+    });
+    return fdicts;
 }
 
 function options(samasa, next) {
