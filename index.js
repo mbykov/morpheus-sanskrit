@@ -68,7 +68,6 @@ morpheus.prototype.run = function(samasa, next, cb) {
     // getDictsSa(qstems, function(err, dbdicts) {
         // log('DBD', err, dbdicts.length);
         // TODO: теперь установить соответствие между chains и dbdicts
-        // var fdicts = dict4flake(queries, dbdicts);
         // log('D-flakes', fdicts);
         // выбрать только те flakes, query которых найдены в dicts:
         var dstems = dbdicts.map(function(dict) { return dict.sa});
@@ -77,16 +76,11 @@ morpheus.prototype.run = function(samasa, next, cb) {
             if (inc(dstems, q.query)) flakes.push(q.flake || q.query);
         });
         flakes =_.uniq(flakes);
-
-        // var flakes = _.uniq(queries.map(function(q) { return q.flake || q.query}));
-        // log('FLAKES-Q', inc(qstems, 'अर्जुन'));
-        // log('FLAKES-D', inc(dstems, 'अर्जुन'));
-        // log('FLAKES-F', inc(dstems, 'अर्जुन'));
-        log('FLAKES', flakes);
+        // log('FLAKES', flakes);
         var pdchs = filterChain(chains, flakes);
         //
-        // log('PDCHS', pdchs);
-        // cb(dbdicts);
+        // выбрать dicts по реальным flakes
+        // var fdicts = dict4flake(queries, dbdicts);
         cb(pdchs);
     });
     // cb('ok');
@@ -110,6 +104,7 @@ function filterChain(chains, flakes) {
                 ok += 1;
             }
         });
+        // weights - BImArjunasamA - правильный только седьмой. Bi + ima больше, чем Bima, что неверно
         if (pdch.weigth > 0) {
             pdch.weigth = (pdch.weigth/total).toFixed(2);
             if (ok == chain.length) pdchs.push(pdch);
