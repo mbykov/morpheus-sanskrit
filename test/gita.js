@@ -15,6 +15,7 @@ var sandhi = s.sandhi;
 var log = u.log;
 var p = u.p;
 var inc = u.include;
+// var outer = require('../lib/outer');
 
 var Relax = require('relax-component');
 var relax = new Relax('http://admin:kjre4317@localhost:5984');
@@ -60,25 +61,30 @@ function runGitaTests() {
 function checkTest(test, cb) {
     var samasa = test.form;
     var ok;
-    morph.run(samasa, test.next, function(dicts) {
+    morph.run(samasa, test.next, function(res) {
         var salat = salita.sa2slp(samasa)
-        // log('SALAT', salat)
-        if (!dicts || dicts.length == 0) {
-            log('NO DICTS', 'salat:', salat, 'samasa', samasa);
+        // log('TEST SALAT', salat, test.pdch)
+        if (!res || res.pdchs.length == 0) {
+            log('NO PDCHS', test.idx, test.sutra, 'salat:', salat, 'samasa', samasa);
+            throw new Error('no pdchs')
         }
-        var stems = dicts.map(function(dict) { return dict.stem});
-        // log('PDCH', idx, salat, samasa, 'pdch:', pdch, 'stems:', stems);
-        test.pdch.forEach(function(pada) {
-            if (inc(stems, pada)) ok = true;
-            else ok = false;
-        });
+        var pdchs = res.pdchs;
+        var testpdch = outerCheck(test)
+        // выходит, лучше здесь исправлять outer.sandhi, потому что в morph-03 -e и -H будут обрезаны в результатах все равно?
+        // а реальное окончание - флексия -e - останется в результате pdchs, поскольку будет в samasa
+
+        ok = false;
+        var testpdch = JSON.stringify(test.pdch);
+        pdchs.forEach(function(pdch) {
+            if (JSON.stringify(pdch.chain) == testpdch) ok = true;
+        })
         if (!ok) {
             log('ABSENT:', salat);
-            log('stems:', stems);
-            log('test:', test);
+            p('pdchs:', pdchs);
+            p('test:', test);
             throw new Error();
         } else {
-            log('OK', test.idx, salat, samasa);
+            log('OK', test.idx, test.sutra, salat, samasa);
             return cb(null, salat);
         }
     }); // morph
@@ -119,4 +125,74 @@ function correctM(str) {
     var fin = u.last(str);
     if (fin == c.anusvara) clean = [u.wolast(str), c.m, c.virama].join('');
     return clean;
+}
+
+// исправляет влияние outer-sandhi на последнюю pada в padaccheda, для совпадения с тестом - samasa
+function outerCheck(test) {
+    var pdch = test.pdch;
+    var lastPada = u.last(pdch)[0];
+    var lastPadaFin = u.last(lastPada);
+    var fin = u.last(test.form);
+
+    var pada;
+    if (lastPadaFin == c.e && u.isConsonant(fin)) {
+        pada = u.wolast(lastPada);
+        pdch.pop();
+        pdch.push(pada);
+    }
+
+    return pdch;
+
+    // это убить после прогона всех тестов
+
+    var odds = [];
+    var odd;
+    // по-моему, далее я опять воспроизвожу аккуратно outer.js:
+    if (u.isConsonant(opt.fin) && (u.isConsonant(opt.beg) || u.isSimple(opt.beg))) {
+        terms.forEach(function(term) {
+            if (inc(['स', 'एष'], term)) {
+                odd = [term, c.visarga].join('');
+                odds.push(odd);
+                // FIXME: где объект ?
+                // log('SA - ESHA', odd);
+                throw new Error('SA:-ESHA: OUTER');
+            }
+        });
+    }
+    // log('=========', opt.fin, u.isConsonant(opt.fin), opt.beg, u.isSimple(opt.beg), c.allexa)
+    if (u.isConsonant(opt.fin) && u.isVowExA(opt.beg)) {
+        var terms_e = terms.map(function(term) { return {query: [term, c.e].join(''), flake: term, var: 'e'} });
+        var terms_H = terms.map(function(term) { return {query: [term, c.visarga].join(''), flake: term, var: 'H'} });
+        odds = odds.concat(terms_e, terms_H);
+        // log('OOOO', terms_H)
+    }
+    // log('FIN', opt.fin, 'BEG', opt.beg);
+    else if (opt.fin == c.o && inc(c.soft, opt.beg)) {
+        var terms_o = terms.map(function(term) { return {query: [u.wolast(term), c.visarga].join(''), flake: term, var: 'o'}  });
+        // log('OOOO', terms_o)
+        odds = odds.concat(terms_o);
+    }
+    else if (opt.fin == c.A && (inc(c.soft, opt.beg) || inc(c.allvowels, opt.beg))) {
+        var terms_A = terms.map(function(term) { return  {query: [term, c.visarga].join(''), flake: term, var: 'A'}   });
+        // log('OOOO', terms_o)
+        odds = odds.concat(terms_A);
+    }
+    else if (opt.fin == c.virama && inc(c.onlysoft, opt.penult) && inc(c.soft, opt.beg)) {
+        var terms_hard = terms.map(function(term) {
+            var hard_fin = u.class1(opt.penult);
+            var hard = term.slice(0, -2);
+            return {query: [hard, hard_fin, c.virama].join(''), flake: term, var: 'hard'} ;
+        });
+        // log('SOFT TO HARD', terms)
+        odds = odds.concat(terms_hard);
+    }
+    return odds;
+}
+
+function options(samasa, next) {
+    var opt = {};
+    opt.fin = u.last(samasa);
+    opt.penult = u.penult(samasa);
+    opt.beg = u.first(next);
+    return opt;
 }

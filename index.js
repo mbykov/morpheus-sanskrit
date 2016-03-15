@@ -18,6 +18,8 @@ var Relax = require('relax-component');
 var relax = new Relax(dbpath);
 relax.dbname('gita-add');
 
+var debug = (process.env.debug == 'true') ? true : false;
+
 module.exports = morpheus();
 
 function morpheus() {
@@ -28,7 +30,7 @@ function morpheus() {
 // main
 // должен возвращать полностью сформированный список вариантов с весами-вероятностями
 morpheus.prototype.run = function(samasa, next, cb) {
-    if (!next) next = 'इ'; // FIXME:
+    // if (!next) next = 'इ'; // FIXME:
     var opt = options(samasa, next);
     clean = samasa;
     if (opt.fin == c.anusvara) clean = outer.correctM(samasa, opt);
@@ -42,12 +44,13 @@ morpheus.prototype.run = function(samasa, next, cb) {
     var queries = stems.map(function(stem) { return {query: stem}});
 
     if (next) {
+        // убрал в исправление теста
         var odds = outer.odd(terms, opt, clean, next);
         // log('odds', odds);
         queries = queries.concat(odds);
     }
     // log('QUERIES to get', queries);
-    log('STEMS-flakes to get', stems.length);
+    if (debug) log('STEMS-flakes to get', stems.length);
 
     // добавляю stems по tin-sup флексиям
     var stem;
@@ -62,7 +65,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
     });
     var qstems = _.uniq(queries.map(function(q) { return q.query}));
     // log('QSTEMS to get', JSON.stringify(qstems));
-    log('QSTEMS-all to get', qstems.length);
+    if (debug) log('QSTEMS-all to get', qstems.length);
 
     getDicts(qstems, function(err, dbdicts) {
     // getDictsSa(qstems, function(err, dbdicts) {
@@ -190,6 +193,7 @@ function getDicts(stems, cb) {
         });
 }
 
+// это уже не нужно, сейчас все POST
 function getDictsSa(stems, cb) {
     // log('STEMS', stems);
     // stems = ['रमते'];
