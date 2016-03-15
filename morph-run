@@ -6,28 +6,20 @@
 
 var lat = process.argv.slice(2)[0] || false;
 var pdch = process.argv.slice(3)[0] || false;
-var util = require('util');
+// var util = require('util');
 
 var sandhi = require('sandhi');
 var u = sandhi.u;
 var log = u.log;
 var p = u.p;
 
-var salita = require('salita-component');
 var morph = require('./index');
-// var program = require('commander');
+var param = require('./lib/morph-param');
+
 
 if (!lat) return log('?');
 
-var samasa;
-if (/[a-zA-Z]/.test(lat[0])) {
-    samasa = salita.slp2sa(lat);
-} else {
-    samasa = lat;
-    lat = salita.sa2slp(samasa);
-}
-
-log('============================================= HERE MORPH-RUN', process.argv)
+var samasa = param(lat);
 
 log('_la_:', lat, '_sa_:', samasa);
 

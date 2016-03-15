@@ -1,0 +1,62 @@
+#!/usr/bin/env node
+
+/*
+  get a word from MW
+
+*/
+
+var lat = process.argv.slice(2)[0] || false;
+var pdch = process.argv.slice(3)[0] || false;
+// var util = require('util');
+
+var sandhi = require('sandhi');
+var u = sandhi.u;
+var log = u.log;
+var p = u.p;
+
+
+var param = require('./lib/morph-param');
+
+dbpath = 'http://admin:kjre4317@localhost:5984';
+var Relax = require('relax-component');
+var relax = new Relax(dbpath);
+relax.dbname('mw');
+
+
+if (!lat) return log('?');
+
+var samasa = param(lat);
+
+log('_la_:', lat, '_sa_:', samasa);
+
+console.time('morph');
+
+get(samasa, function(err, res) {
+    log('get: ');
+    p(res);
+});
+
+console.timeEnd('morph');
+
+function get(stem, cb) {
+    var view = 'mw/byStem';
+    var stems = [stem];
+    var keys = ['keys=', JSON.stringify(stems)].join('');
+    // var keys = ['keys=', JSON.stringify(['इहैव'])].join('');
+    log('morph-03 getDicts ===== MW-new');
+    relax
+        .view(view)
+        .query(keys)
+        .query({include_docs: true})
+        // .query({limit: 100})
+        .end(function(err, res) {
+            // log('RES morph getDicts', res.text);
+            // log('ERR morph getDicts', err);
+            if (err) return cb(err, null);
+            var rows = JSON.parse(res.text.trim()).rows;
+            if (!rows) cb(err, null);
+            var docs = rows.map(function(row) { return row.doc });
+            cb(err, docs);
+            return;
+        });
+}
