@@ -43,18 +43,18 @@ function get(stem, cb) {
     var stems = [stem];
     var keys = ['keys=', JSON.stringify(stems)].join('');
     // var keys = ['keys=', JSON.stringify(['इहैव'])].join('');
-    log('morph-03 getDicts ===== MW-new');
+    log('morph-03 getDicts ===== MW-new', keys);
     relax
         .view(view)
         .query(keys)
         .query({include_docs: true})
         // .query({limit: 100})
         .end(function(err, res) {
-            // log('RES morph getDicts', res.text);
             // log('ERR morph getDicts', err);
             if (err) return cb(err, null);
             var rows = JSON.parse(res.text.trim()).rows;
             if (!rows) cb(err, null);
+            // log('./morph get Dicts: rows', rows);
             var docs = rows.map(function(row) { return row.doc });
             cb(err, docs);
             return;

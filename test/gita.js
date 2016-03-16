@@ -27,7 +27,7 @@ runGitaTests();
 
 function runGitaTests() {
     getDocs(function(docs) {
-        docs = docs.slice(8);
+        docs = docs.slice(10);
         var tests = [];
         var form, next, nextLine, trn, pdch;
         var dicts;
@@ -58,15 +58,27 @@ function runGitaTests() {
     });
 }
 
+// не определяется из-за недоделки обработки формы глагола в MW, это не нужно в gita-add
+// var gitaVerb = ['kimakurvata', 'saYjanayanharzaM'];
+
 function checkTest(test, cb) {
     var samasa = test.form;
     var ok;
     morph.run(samasa, test.next, function(res) {
-        var salat = salita.sa2slp(samasa)
+        var salat = salita.sa2slp(samasa);
+        // if (inc(gitaVerb, salat)) {
+        //     cb(null, true);
+        //     return;
+        // }
         // log('TEST SALAT', salat, test.pdch)
-        if (!res || res.pdchs.length == 0) {
+        if (!res || !res.pdchs || res.pdchs.length == 0) {
             log('NO PDCHS', test.idx, test.sutra, 'salat:', salat, 'samasa', samasa);
+            // log('holeys:', res.holeys)
+            log('test:', test);
+
             throw new Error('no pdchs')
+            cb(null, true);
+            return;
         }
         var pdchs = res.pdchs;
         var testpdch = outerCheck(test)
@@ -80,9 +92,10 @@ function checkTest(test, cb) {
         })
         if (!ok) {
             log('ABSENT:', salat);
-            p('pdchs:', pdchs);
+            p('pdchs:', pdchs.slice(0,9)); // उपसंगम्
             p('test:', test);
             throw new Error();
+            cb(null, true);
         } else {
             log('OK', test.idx, test.sutra, salat, samasa);
             return cb(null, salat);
@@ -133,9 +146,14 @@ function outerCheck(test) {
     var lastPada = u.last(pdch)[0];
     var lastPadaFin = u.last(lastPada);
     var fin = u.last(test.form);
+    var beg = u.first(test.next);
 
     var pada;
     if (lastPadaFin == c.e && u.isConsonant(fin)) {
+        pada = u.wolast(lastPada);
+        pdch.pop();
+        pdch.push(pada);
+    } else if (lastPadaFin == c.H && fin == c.A && (inc(c.soft, beg) || inc(c.allvowels, beg))) {
         pada = u.wolast(lastPada);
         pdch.pop();
         pdch.push(pada);

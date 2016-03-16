@@ -30,7 +30,7 @@ function morpheus() {
 // main
 // должен возвращать полностью сформированный список вариантов с весами-вероятностями
 morpheus.prototype.run = function(samasa, next, cb) {
-    // if (!next) next = 'इ'; // FIXME:
+    if (!next) next = 'इ'; // FIXME:
     var opt = options(samasa, next);
     clean = samasa;
     if (opt.fin == c.anusvara) clean = outer.correctM(samasa, opt);
@@ -73,7 +73,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // TODO: теперь установить соответствие между chains и dbdicts
         // log('D-flakes', fdicts);
         // выбрать только те flakes, query которых найдены в dicts:
-        var dstems = dbdicts.map(function(dict) { return dict.sa});
+        var dstems = dbdicts.map(function(dict) { return dict.stem});
         var flakes = [];
         queries.forEach(function(q) {
             if (inc(dstems, q.query)) flakes.push(q.flake || q.query);
@@ -142,7 +142,7 @@ function dict4flake(queries, dbdicts) {
         dbdicts.forEach(function(dbdict) {
             // log('DBDICT', dbdict)
             var flake = q.flake || q.query; // простейшие, из chain, не имеют .flake
-            if (dbdict.sa != q.query) return;
+            if (dbdict.stem != q.query) return;
             var dict = {};
             // dict.flake = flake;
             if (dbdict.lex) dict.lex = dbdict.lex;
@@ -167,73 +167,24 @@ function options(samasa, next) {
 // gita-add имеет единственный stem по определению
 function getDicts(stems, cb) {
     var keys = {keys: stems};
-    // var view = 'gita-add/byForm';
-    relax.dbname('mw');
-    var view = 'mw/byStem';
+    // relax.dbname('mw');
+    // var view = 'mw/byStem';
+    relax.dbname('gita-add');
+    var view = 'gita-add/byStem';
     // log('morph-03 getDicts - POST', JSON.stringify(keys));
-    // FIXME: Content-Type отдельно прописан - так нельзя
-    // var keys = {keys: ['इहैव']};
     relax
         .postView(view)
         .send(keys)
-        // .query({limit: 100})
         .query({include_docs: true})
+        // FIXME: Content-Type отдельно прописан - так нельзя
         .set('Content-Type', 'application/json')
         .end(function(err, res) {
             // if (err) log('ERR morph getDicts', err, res);
             if (err) return cb(err, null);
             var rows = JSON.parse(res.text.trim()).rows;
             var docs =  _.uniq(rows.map(function(row) { return row.doc }));
-            // gita-add:
-            // var docs = _.map(rows, function(row) {
-            //     var doc = {stem: row.key, trn: row.value};
-            //     return doc;
-            // });
+            // log('DOCS', docs.length)
             cb(err, docs);
-        });
-}
-
-// это уже не нужно, сейчас все POST
-function getDictsSa(stems, cb) {
-    // log('STEMS', stems);
-    // stems = ['रमते'];
-    // relax.dbname('sa');
-    // var view = 'sa/sa';
-    relax.dbname('mw');
-    var view = 'mw/byStem';
-    var keys = ['keys=', JSON.stringify(stems)].join('');
-    // var keys = ['keys=', JSON.stringify(['इहैव'])].join('');
-    log('morph-03 getDicts ===== MW-new');
-    relax
-        .view(view)
-        .query(keys)
-        .query({include_docs: true})
-        .query({limit: 100})
-        .end(function(err, res) {
-            // log('RES morph getDicts', res);
-            // log('ERR morph getDicts', err);
-            if (err) return cb(err, null);
-            var rows = JSON.parse(res.text.trim()).rows;
-            // var stems =  _.uniq(rows.map(function(row) { return row.key }));
-            var docs =  _.uniq(rows.map(function(row) { return row.doc }));
-            cb(err, docs);
-            return;
-
-            // дальше пока лишнее, сначала лучше выбрать только значимые stems;
-            // попытка здесь же сформировать правильные docs, как в ответе:
-            // var stems =  _.uniq(rows.map(function(row) { return row.key }));
-            // log('KEYS:', stems);
-            // var rawdocs = rows.map(function(row) { return row.doc });
-            // var docs = stems.map(function(stem) {
-            //     var doc = {stem: stem, dict: 'mw', dicts: []};
-            //     rawdocs.forEach(function(raw) {
-            //         if (raw.sa != stem) return;
-            //         var dict = {stem: raw.sa, slp: raw.slp, lex: raw.lex};
-            //         doc.dicts.push(dict);
-            //     });
-            //     return doc;
-            // });
-            // cb(err, docs);
         });
 }
 
