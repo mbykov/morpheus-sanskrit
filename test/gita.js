@@ -27,7 +27,7 @@ runGitaTests();
 
 function runGitaTests() {
     getDocs(function(docs) {
-        docs = docs.slice(10);
+        docs = docs.slice(28);
         var tests = [];
         var form, next, nextLine, trn, pdch;
         var dicts;
@@ -146,15 +146,19 @@ function outerCheck(test) {
     var lastPada = u.last(pdch)[0];
     var lastPadaFin = u.last(lastPada);
     var fin = u.last(test.form);
-    var beg = u.first(test.next);
+    var beg = (test.next) ? u.first(test.next) : '';
 
     var pada;
     if (lastPadaFin == c.e && u.isConsonant(fin)) {
         pada = u.wolast(lastPada);
         pdch.pop();
         pdch.push(pada);
-    } else if (lastPadaFin == c.H && fin == c.A && (inc(c.soft, beg) || inc(c.allvowels, beg))) {
+    } else if (lastPadaFin == c.H && fin == c.A) { //  && (inc(c.soft, beg) || inc(c.allvowels, beg))
         pada = u.wolast(lastPada);
+        pdch.pop();
+        pdch.push(pada);
+    } else if (lastPadaFin == c.H && fin == c.o) {
+        pada = [u.wolast(lastPada), c.o].join('');
         pdch.pop();
         pdch.push(pada);
     }
