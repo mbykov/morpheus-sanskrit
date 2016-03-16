@@ -27,7 +27,7 @@ runGitaTests();
 
 function runGitaTests() {
     getDocs(function(docs) {
-        docs = docs.slice(28);
+        docs = docs.slice(47);
         var tests = [];
         var form, next, nextLine, trn, pdch;
         var dicts;
@@ -145,8 +145,11 @@ function outerCheck(test) {
     var pdch = test.pdch;
     var lastPada = u.last(pdch)[0];
     var lastPadaFin = u.last(lastPada);
+    var lastPadaPenult = u.penult(lastPada);
+    var softPadaPenult = u.hard2soft(lastPadaPenult);
     var fin = u.last(test.form);
     var beg = (test.next) ? u.first(test.next) : '';
+    var penult = u.penult(test.form);
 
     var pada;
     if (lastPadaFin == c.e && u.isConsonant(fin)) {
@@ -161,7 +164,21 @@ function outerCheck(test) {
         pada = [u.wolast(lastPada), c.o].join('');
         pdch.pop();
         pdch.push(pada);
+    } else if (fin == c.virama && softPadaPenult == penult) {
+        pada = [u.wolast2(lastPada), softPadaPenult, c.virama].join('');
+        pdch.pop();
+        pdch.push(pada);
     }
+
+    // else if (opt.fin == c.virama && inc(c.onlysoft, opt.penult) && inc(c.soft, opt.beg)) {
+    //     var terms_hard = terms.map(function(term) {
+    //         var hard_fin = u.class1(opt.penult);
+    //         var hard = term.slice(0, -2);
+    //         return {query: [hard, hard_fin, c.virama].join(''), flake: term, var: 'hard'} ;
+    //     });
+    //     // log('SOFT TO HARD', terms)
+    //     odds = odds.concat(terms_hard);
+    // }
 
     return pdch;
 
