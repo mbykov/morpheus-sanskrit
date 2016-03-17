@@ -93,12 +93,14 @@ morpheus.prototype.run = function(samasa, next, cb) {
 // м.б. считать syllables, а не length ? чтобы flexes не лезли вперед, а length - наоборот, уменьшить weight ?
 // второе - лучше бы наверх - простейшие, т.е. flake=query ?
 function filterChain(chains, flakes) {
-    // log('C', chains)
+    // log('C', chains);
     var pdchs = [];
     var holeys = [];
     var bads = [];
     var total = Math.pow(chains[0].join('').length, 2);
     chains.forEach(function(chain) {
+        var nonuniq = 0;
+        if (chain.length != _.uniq(chain).length) nonuniq +=1;
         var pdch = {chain: chain, weigth: 0};
         var ok = 0;
         flakes.forEach(function(flake) {
@@ -107,6 +109,8 @@ function filterChain(chains, flakes) {
                 ok += 1;
             }
         });
+        ok += nonuniq; // если не uniq, то ok=1, короче
+        // log('OK', ok, chain.length)
         // weights - BImArjunasamA - правильный только седьмой. Bi + ima больше, чем Bima, что неверно
         if (pdch.weigth > 0) {
             pdch.weigth = (pdch.weigth/total).toFixed(2);

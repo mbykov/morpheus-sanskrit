@@ -27,7 +27,7 @@ runGitaTests();
 
 function runGitaTests() {
     getDocs(function(docs) {
-        docs = docs.slice(47);
+        docs = docs.slice(295);
         var tests = [];
         var form, next, nextLine, trn, pdch;
         var dicts;
@@ -63,6 +63,7 @@ function runGitaTests() {
 
 function checkTest(test, cb) {
     var samasa = test.form;
+    samasa = correctM(samasa);
     var ok;
     morph.run(samasa, test.next, function(res) {
         var salat = salita.sa2slp(samasa);
@@ -152,7 +153,7 @@ function outerCheck(test) {
     var penult = u.penult(test.form);
 
     var pada;
-    if (lastPadaFin == c.e && u.isConsonant(fin)) {
+    if ((lastPadaFin == c.e || lastPadaFin == c.H) && u.isConsonant(fin)) {
         pada = u.wolast(lastPada);
         pdch.pop();
         pdch.push(pada);

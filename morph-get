@@ -20,7 +20,8 @@ var param = require('./lib/morph-param');
 dbpath = 'http://admin:kjre4317@localhost:5984';
 var Relax = require('relax-component');
 var relax = new Relax(dbpath);
-relax.dbname('mw');
+// relax.dbname('mw');
+relax.dbname('gita-add');
 
 
 if (!lat) return log('?');
@@ -39,7 +40,8 @@ get(samasa, function(err, res) {
 console.timeEnd('morph');
 
 function get(stem, cb) {
-    var view = 'mw/byStem';
+    // var view = 'mw/byStem';
+    var view = 'gita-add/byStem';
     var stems = [stem];
     var keys = ['keys=', JSON.stringify(stems)].join('');
     // var keys = ['keys=', JSON.stringify(['इहैव'])].join('');
