@@ -16,7 +16,6 @@ var p = u.p;
 var morph = require('./index');
 var param = require('./lib/morph-param');
 
-
 if (!lat) return log('?');
 
 var opt = param(lat);

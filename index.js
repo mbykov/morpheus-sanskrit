@@ -83,8 +83,10 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // log('FLAKES', flakes);
         var pdchs = filterChain(chains, flakes);
         //
-        // выбрать dicts по реальным flakes
+        // выбрать dicts по реальным flakes, т.е. pdch
         // var fdicts = dict4flake(queries, dbdicts);
+        log('========>>>>', pdchs);
+        pdchs.dicts = dict4pdch(pdchs.pdchs, dbdicts);
         cb(pdchs);
     });
     // cb('ok');
@@ -135,28 +137,26 @@ function filterChain(chains, flakes) {
 }
 
 
-// соответствие dbdict и queries - может быть много dbdicts на один query
-// здесь каждому flake ставится в соответствие набор dicts, на будущее - нужно в интерфейсе, при выводе dicts для flakes
-// нормально, но я здесь обрабатываю ВСЕ flakes, включая ненужные
-// и здесь я тащу словари за собой в фильтр chains, so . . . переделать на только нужные
-function dict4flake(queries, dbdicts) {
-    log('Queries', queries.length)
-    log('Dbdicts', dbdicts.length) // <=== вот тут вот неединственность
-    var fdicts = {};
-    queries.forEach(function(q) {
-        dbdicts.forEach(function(dbdict) {
-            // log('DBDICT', dbdict)
-            var flake = q.flake || q.query; // простейшие, из chain, не имеют .flake
-            if (dbdict.stem != q.query) return;
-            var dict = {};
-            // dict.flake = flake;
-            if (dbdict.lex) dict.lex = dbdict.lex;
-            if (dbdict.vlex) dict.vlex = dbdict.vlex;
-            if (!fdicts[flake]) fdicts[flake] = [];
-            fdicts[flake].push(dict);
+function dict4pdch(pdchs, dbdicts) {
+    // log('Pdchs', pdchs.length)
+    // log('Dbdicts', dbdicts.length) // <=== вот тут вот неединственность
+    var pdicts = {};
+    pdchs.forEach(function(pdch) {
+        pdch.chain.forEach(function(pada) {
+            dbdicts.forEach(function(dbdict) {
+                // log('DBDICT', dbdict)
+                if (dbdict.stem != pada) return;
+                var dict = {stem: dbdict.stem};
+                // dict.flake = flake;
+                if (dbdict.lex) dict.lex = dbdict.lex;
+                else if (dbdict.vlex) dict.vlex = dbdict.vlex;
+                else if (dbdict.trns) dict.lex = dbdict.trns; // FIXME: это в словате BG:, должно уйти в .lex
+                if (!pdicts[pada]) pdicts[pada] = [];
+                pdicts[pada].push(dict);
+            });
         });
     });
-    return fdicts;
+    return pdicts;
 }
 
 function options(samasa, next) {
