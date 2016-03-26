@@ -23,11 +23,21 @@ relax.dbname('gita');
 
 var morph = require('../index');
 
+var param = require('../lib/morph-param');
+
+var par = process.argv.slice(2)[0] || false;
+if (par) {
+    var parobj = param(par);
+    var samasa = parobj.sa;
+    var latin = parobj.lat;
+    log('_la_:', latin, '_sa_:', samasa);
+}
+
 runGitaTests();
 
 function runGitaTests() {
     getDocs(function(docs) {
-        docs = docs.slice(295);
+        docs = docs.slice(356);
         var tests = [];
         var form, next, nextLine, trn, pdch;
         var dicts;
@@ -37,10 +47,15 @@ function runGitaTests() {
             doc.lines.forEach(function(line, idy) {
                 if (line.trn) return;
                 form = line.form;
+                if (par && form != samasa) return;
+                // вот проблема - этих слов или нет в базе, или не могу получить их обратно. Попытаться залить одно такое слово
+                // а есть ли эти формы в gita, а не gita-add?
                 if (form == 'शक्नोतीहैव') return; // FIXME: FIXME: FIXME: इहैव не достается из базы, 5.23 // slice(226, 238) // आत्मैव
                 if (form == 'वर्तेतात्मैव') return; // FIXME: FIXME: FIXME: इहैव не достается из базы, 6.6 // slice(238) // आत्मैव
-                if (form == 'यावान्यश्चास्मि') return; // тоже нет второй пады, चास्मि - но тут нет aiva
+                if (form == 'यावान्यश्चास्मि') return; // тоже нет второй пады, चास्मि - но тут нет aiva // да, нету cAsmi
                 if (form == 'त्वात्मैव') return; // тоже нет второй пады, आत्मैव
+                if (form == 'नैवेह') return; // нет первой
+                // form == 'यावान्यश्चास्मि' => _id: '832c9e1251e472391e59084ffdaef7ee'
 
                 if (form.indexOf('ऽ') > -1) return; // потому что avagraha обрабатывается иначе - деление всегда сразу по ней
                 if (form.length > 19) return;
@@ -82,28 +97,29 @@ function checkTest(test, cb) {
             return;
         }
         var pdchs = res.pdchs;
+        // поскольку здесь тест взят из gita, а не gita-add, нужно опять поправить последнюю pada
         var testpdch = outerCheck(test)
-        // выходит, лучше здесь исправлять outer.sandhi, потому что в morph-03 -e и -H будут обрезаны в результатах все равно?
-        // а реальное окончание - флексия -e - останется в результате pdchs, поскольку будет в samasa
-
+        testpdch = JSON.stringify(testpdch);
         ok = false;
-        var testpdch = JSON.stringify(test.pdch);
         pdchs.forEach(function(pdch) {
             if (JSON.stringify(pdch.chain) == testpdch) ok = true;
         })
         if (!ok) {
-            log('ABSENT:', salat);
+            log('ABSENT:', salat, samasa);
             p('pdchs:', pdchs.slice(0,9)); // उपसंगम्
             p('test:', test);
             throw new Error();
             cb(null, true);
         } else {
             log('OK', test.idx, test.sutra, salat, samasa);
+            if (par) p('pdchs:', pdchs);
+            if (par) p('test.pdch:', test.pdch);
             return cb(null, salat);
         }
     }); // morph
 }
 
+// from gita
 function getDocs(cb) {
     relax
         .all()
@@ -169,8 +185,48 @@ function outerCheck(test) {
         pada = [u.wolast2(lastPada), softPadaPenult, c.virama].join('');
         pdch.pop();
         pdch.push(pada);
+    } else if (inc(['सः', 'एषः'], lastPada)) {
+        pada = u.wolast(lastPada);
+        pdch.pop();
+        pdch.push(pada);
     }
 
+    return pdch;
+
+    // это убить после прогона всех тестов
+
+    // var odds = [];
+    // var odd;
+    // // по-моему, далее я опять воспроизвожу аккуратно outer.js:
+    // if (u.isConsonant(opt.fin) && (u.isConsonant(opt.beg) || u.isSimple(opt.beg))) {
+    //     terms.forEach(function(term) {
+    //         if (inc(['स', 'एष'], term)) {
+    //             odd = [term, c.visarga].join('');
+    //             odds.push(odd);
+    //             // FIXME: где объект ?
+    //             // log('SA - ESHA', odd);
+    //             throw new Error('SA:-ESHA: OUTER');
+    //         }
+    //     });
+    // }
+    // // log('=========', opt.fin, u.isConsonant(opt.fin), opt.beg, u.isSimple(opt.beg), c.allexa)
+    // if (u.isConsonant(opt.fin) && u.isVowExA(opt.beg)) {
+    //     var terms_e = terms.map(function(term) { return {query: [term, c.e].join(''), flake: term, var: 'e'} });
+    //     var terms_H = terms.map(function(term) { return {query: [term, c.visarga].join(''), flake: term, var: 'H'} });
+    //     odds = odds.concat(terms_e, terms_H);
+    //     // log('OOOO', terms_H)
+    // }
+    // // log('FIN', opt.fin, 'BEG', opt.beg);
+    // else if (opt.fin == c.o && inc(c.soft, opt.beg)) {
+    //     var terms_o = terms.map(function(term) { return {query: [u.wolast(term), c.visarga].join(''), flake: term, var: 'o'}  });
+    //     // log('OOOO', terms_o)
+    //     odds = odds.concat(terms_o);
+    // }
+    // else if (opt.fin == c.A && (inc(c.soft, opt.beg) || inc(c.allvowels, opt.beg))) {
+    //     var terms_A = terms.map(function(term) { return  {query: [term, c.visarga].join(''), flake: term, var: 'A'}   });
+    //     // log('OOOO', terms_o)
+    //     odds = odds.concat(terms_A);
+    // }
     // else if (opt.fin == c.virama && inc(c.onlysoft, opt.penult) && inc(c.soft, opt.beg)) {
     //     var terms_hard = terms.map(function(term) {
     //         var hard_fin = u.class1(opt.penult);
@@ -180,53 +236,7 @@ function outerCheck(test) {
     //     // log('SOFT TO HARD', terms)
     //     odds = odds.concat(terms_hard);
     // }
-
-    return pdch;
-
-    // это убить после прогона всех тестов
-
-    var odds = [];
-    var odd;
-    // по-моему, далее я опять воспроизвожу аккуратно outer.js:
-    if (u.isConsonant(opt.fin) && (u.isConsonant(opt.beg) || u.isSimple(opt.beg))) {
-        terms.forEach(function(term) {
-            if (inc(['स', 'एष'], term)) {
-                odd = [term, c.visarga].join('');
-                odds.push(odd);
-                // FIXME: где объект ?
-                // log('SA - ESHA', odd);
-                throw new Error('SA:-ESHA: OUTER');
-            }
-        });
-    }
-    // log('=========', opt.fin, u.isConsonant(opt.fin), opt.beg, u.isSimple(opt.beg), c.allexa)
-    if (u.isConsonant(opt.fin) && u.isVowExA(opt.beg)) {
-        var terms_e = terms.map(function(term) { return {query: [term, c.e].join(''), flake: term, var: 'e'} });
-        var terms_H = terms.map(function(term) { return {query: [term, c.visarga].join(''), flake: term, var: 'H'} });
-        odds = odds.concat(terms_e, terms_H);
-        // log('OOOO', terms_H)
-    }
-    // log('FIN', opt.fin, 'BEG', opt.beg);
-    else if (opt.fin == c.o && inc(c.soft, opt.beg)) {
-        var terms_o = terms.map(function(term) { return {query: [u.wolast(term), c.visarga].join(''), flake: term, var: 'o'}  });
-        // log('OOOO', terms_o)
-        odds = odds.concat(terms_o);
-    }
-    else if (opt.fin == c.A && (inc(c.soft, opt.beg) || inc(c.allvowels, opt.beg))) {
-        var terms_A = terms.map(function(term) { return  {query: [term, c.visarga].join(''), flake: term, var: 'A'}   });
-        // log('OOOO', terms_o)
-        odds = odds.concat(terms_A);
-    }
-    else if (opt.fin == c.virama && inc(c.onlysoft, opt.penult) && inc(c.soft, opt.beg)) {
-        var terms_hard = terms.map(function(term) {
-            var hard_fin = u.class1(opt.penult);
-            var hard = term.slice(0, -2);
-            return {query: [hard, hard_fin, c.virama].join(''), flake: term, var: 'hard'} ;
-        });
-        // log('SOFT TO HARD', terms)
-        odds = odds.concat(terms_hard);
-    }
-    return odds;
+    // return odds;
 }
 
 function options(samasa, next) {

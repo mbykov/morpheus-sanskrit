@@ -19,10 +19,13 @@ var param = require('./lib/morph-param');
 
 if (!lat) return log('?');
 
-var samasa = param(lat);
+var opt = param(lat);
+var samasa = opt.sa;
+var lat = opt.lat;
 
 log('_la_:', lat, '_sa_:', samasa);
 
+log('S', samasa)
 console.time('morph');
 
 morph.run(samasa, null, function(res) {

@@ -44,10 +44,11 @@ morpheus.prototype.run = function(samasa, next, cb) {
     var queries = stems.map(function(stem) { return {query: stem}});
 
     if (next) {
-        // убрал в исправление теста
-        var odds = outer.odd(terms, opt, clean, next);
+        // здесь нужно добавлять слово с флексией, иначе не найдет в словаре, а в тесте - убирать, иначе не сравнит с chains
+        // теперь в словаре нет флексии, ===> но изменение пока не отражено в переводе
+        // var odds = outer.odd(terms, opt, clean, next);
         // log('odds', odds);
-        queries = queries.concat(odds);
+        // queries = queries.concat(odds);
     }
     // log('QUERIES to get', queries);
     if (debug) log('STEMS-flakes to get', stems.length);

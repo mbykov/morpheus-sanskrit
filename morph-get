@@ -26,7 +26,8 @@ relax.dbname('gita-add');
 
 if (!lat) return log('?');
 
-var samasa = param(lat);
+var par = param(lat);
+var samasa = par.sa;
 
 log('_la_:', lat, '_sa_:', samasa);
 
@@ -45,14 +46,14 @@ function get(stem, cb) {
     var stems = [stem];
     var keys = ['keys=', JSON.stringify(stems)].join('');
     // var keys = ['keys=', JSON.stringify(['इहैव'])].join('');
-    log('morph-03 getDicts ===== MW-new', keys);
+    log('morph-03 getDicts =====>> keys:', keys);
     relax
         .view(view)
         .query(keys)
         .query({include_docs: true})
         // .query({limit: 100})
         .end(function(err, res) {
-            // log('ERR morph getDicts', err);
+            // log('ERR morph getDicts', err, res.text);
             if (err) return cb(err, null);
             var rows = JSON.parse(res.text.trim()).rows;
             if (!rows) cb(err, null);
