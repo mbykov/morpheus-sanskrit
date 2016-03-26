@@ -16,7 +16,7 @@ var stemmer = require('../stemmer');
 dbpath = 'http://admin:kjre4317@localhost:5984';
 var Relax = require('relax-component');
 var relax = new Relax(dbpath);
-relax.dbname('gita-add');
+// relax.dbname('gita-add');
 
 var debug = (process.env.debug == 'true') ? true : false;
 
@@ -85,7 +85,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
         //
         // выбрать dicts по реальным flakes, т.е. pdch
         // var fdicts = dict4flake(queries, dbdicts);
-        log('========>>>>', pdchs);
+        // log('========>>>>', pdchs);
         pdchs.dicts = dict4pdch(pdchs.pdchs, dbdicts);
         cb(pdchs);
     });
@@ -172,10 +172,10 @@ function options(samasa, next) {
 // gita-add имеет единственный stem по определению
 function getDicts(stems, cb) {
     var keys = {keys: stems};
-    // relax.dbname('mw');
-    // var view = 'mw/byStem';
-    relax.dbname('gita-add');
-    var view = 'gita-add/byStem';
+    relax.dbname('mw');
+    var view = 'mw/byStem';
+    // relax.dbname('gita-add');
+    // var view = 'gita-add/byStem';
     // log('morph-03 getDicts - POST', JSON.stringify(keys));
     relax
         .postView(view)
@@ -188,7 +188,7 @@ function getDicts(stems, cb) {
             if (err) return cb(err, null);
             var rows = JSON.parse(res.text.trim()).rows;
             var docs =  _.uniq(rows.map(function(row) { return row.doc }));
-            // log('DOCS', docs.length)
+            // log('DOCS', docs)
             cb(err, docs);
         });
 }
