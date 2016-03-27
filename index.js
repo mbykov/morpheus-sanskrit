@@ -102,9 +102,10 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // log('QCLs', qcleans);
         // var dicts = dict4pdch(pdchs.chains, dbdicts); // << == это неверно, нужны не chains, a чистые queries
         var dicts = dict4query(qcleans, dbdicts);
-        p('D', dicts);
+        // p('D', dicts);
 
-        cb(pdchs);
+        var res = {queries: qcleans, dicts: dicts, pdchs: pdchs}
+        cb(res);
     });
     // cb('ok');
     return;
@@ -150,7 +151,7 @@ function filterChain(chains, flakes) {
         // bads = _.sortBy(holeys, function(pdch) { return pdch.weigth}).reverse();
         // res.bads = holeys.slice(0, 25);
     // }
-    return res;
+    return res.chains;
 }
 
 
