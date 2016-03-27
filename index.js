@@ -36,12 +36,12 @@ morpheus.prototype.run = function(samasa, next, cb) {
     if (opt.fin == c.anusvara) clean = outer.correctM(samasa, opt);
     // log('CLEAN', clean);
     var chains = rasper.cut(clean);
-    // p(chains);
+
     var terms = chains.map(function(chain) { return u.last(chain)});
     terms = _.uniq(_.flatten(terms));
     // log('CHAINS size:', chains.length);
     var stems = _.uniq(_.flatten(chains));
-    var queries = stems.map(function(stem) { return {query: stem}});
+    var queries = stems.map(function(stem) { return {query: stem, flake: stem}});
 
     if (next) {
         // здесь нужно добавлять слово с флексией, иначе не найдет в словаре, а в тесте - убирать, иначе не сравнит с chains
@@ -54,27 +54,39 @@ morpheus.prototype.run = function(samasa, next, cb) {
     if (debug) log('STEMS-flakes to get', stems.length);
 
     // добавляю stems по tin-sup флексиям
+    // FIXME: TODO: stemmer дает ошибку на senayoH - д.б. только du.loc, а он дает много вариантов
+    // и пока что непорядок sena - senayoH - locative - должен дать 100% веса, yoH - флексия
+    // TODO: а он даже не обнаруживается <<<<=====================
     var stem;
     queries.forEach(function(q) {
         stem = q.query;
         if (syllables(stem) < 2) return;
-        var qs = stemmer.get(stem);
-        // if (stem == 'ऊपस्थे') log('===========', qs);
+        var qs = stemmer.get(stem); // धनुरुद्यम्ये
+        // if (stem == 'ऊपस्थे')
         qs.forEach(function(q) { q.flake = stem});
+        // log('===========', qs);
         // log('QS', stem, qs);
         queries = queries.concat(qs);
     });
     var qstems = _.uniq(queries.map(function(q) { return q.query}));
+    // убрать a и еще некоторые короткие? oM?
+    //    if (first.length == 1 && !inc(['च', 'न', 'स', 'ॐ'], first)) return;
+    qstems = _.select(qstems, function(qstem) { return qstem.length > 1});
     // log('QSTEMS to get', JSON.stringify(qstems));
     if (debug) log('QSTEMS-all to get', qstems.length);
 
     getDicts(qstems, function(err, dbdicts) {
     // getDictsSa(qstems, function(err, dbdicts) {
-        // log('DBD', err, dbdicts.length);
+        // p('DBDicts', err, dbdicts);
         // TODO: теперь установить соответствие между chains и dbdicts
-        // log('D-flakes', fdicts);
+        // log('D-flakes', dbdicts);
         // выбрать только те flakes, query которых найдены в dicts:
-        var dstems = dbdicts.map(function(dict) { return dict.stem});
+        // вот это неверно?
+        var dstems = _.uniq(dbdicts.map(function(dict) { return dict.stem}));
+        // log('D', dstems);
+        // log('Q', queries);
+
+        // здесь: беда в том, что dict м.б. равен одному flake, и быть в составе dict+term для другого, чего сейчас нет:
         var flakes = [];
         queries.forEach(function(q) {
             if (inc(dstems, q.query)) flakes.push(q.flake || q.query);
@@ -83,10 +95,15 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // log('FLAKES', flakes);
         var pdchs = filterChain(chains, flakes);
         //
-        // выбрать dicts по реальным flakes, т.е. pdch
-        // var fdicts = dict4flake(queries, dbdicts);
-        // log('========>>>>', pdchs);
-        pdchs.dicts = dict4pdch(pdchs.pdchs, dbdicts);
+        // pdchs.dicts = dict4pdch(pdchs.pdchs, dbdicts);
+
+        // только нужные queries, включающие нужные stem+term:
+        qcleans = _.select(queries, function(q) { return inc(dstems, q.query)});
+        // log('QCLs', qcleans);
+        // var dicts = dict4pdch(pdchs.chains, dbdicts); // << == это неверно, нужны не chains, a чистые queries
+        var dicts = dict4query(qcleans, dbdicts);
+        p('D', dicts);
+
         cb(pdchs);
     });
     // cb('ok');
@@ -124,7 +141,7 @@ function filterChain(chains, flakes) {
     });
     var res = {};
     if (pdchs.length > 0) {
-        res.pdchs = _.sortBy(pdchs, function(pdch) { return pdch.weigth}).reverse();
+        res.chains = _.sortBy(pdchs, function(pdch) { return pdch.weigth}).reverse();
     } else {
         holeys = _.sortBy(holeys, function(pdch) { return pdch.weigth}).reverse();
         res.holeys = holeys.slice(0, 25);
@@ -137,27 +154,47 @@ function filterChain(chains, flakes) {
 }
 
 
-function dict4pdch(pdchs, dbdicts) {
-    // log('Pdchs', pdchs.length)
-    // log('Dbdicts', dbdicts.length) // <=== вот тут вот неединственность
+function dict4query(queries, dbdicts) {
+    // log('Queries', queries);
+    // log('Dbdicts', dbdicts.length)
     var pdicts = {};
-    pdchs.forEach(function(pdch) {
-        pdch.chain.forEach(function(pada) {
-            dbdicts.forEach(function(dbdict) {
-                // log('DBDICT', dbdict)
-                if (dbdict.stem != pada) return;
-                var dict = {stem: dbdict.stem};
-                // dict.flake = flake;
-                if (dbdict.lex) dict.lex = dbdict.lex;
-                else if (dbdict.vlex) dict.vlex = dbdict.vlex;
-                else if (dbdict.trns) dict.lex = dbdict.trns; // FIXME: это в словате BG:, должно уйти в .lex
-                if (!pdicts[pada]) pdicts[pada] = [];
-                pdicts[pada].push(dict);
-            });
+    queries.forEach(function(q) {
+        dbdicts.forEach(function(d) {
+            // log('DBDICT', dbdict)
+            var stem = d.stem;
+            if (stem != q.query) return;
+            var dict = {stem: stem};
+            if (d.lex) dict.lex = d.lex;
+            else if (d.vlex) dict.vlex = d.vlex;
+            else if (d.trns) dict.lex = d.trns; // FIXME: это в словате BG:, должно уйти в .lex
+            if (!pdicts[stem]) pdicts[stem] = [dict];
+            // else pdicts[stem].push(dict);
         });
     });
     return pdicts;
 }
+
+// function dict4pdch(pdchs, dbdicts) {
+//     // log('Pdchs', pdchs.length)
+//     // log('Dbdicts', dbdicts.length) // <=== вот тут вот неединственность
+//     var pdicts = {};
+//     pdchs.forEach(function(pdch) {
+//         pdch.chain.forEach(function(pada) {
+//             dbdicts.forEach(function(dbdict) {
+//                 // log('DBDICT', dbdict)
+//                 if (dbdict.stem != pada) return;
+//                 var dict = {stem: dbdict.stem};
+//                 // dict.flake = flake;
+//                 if (dbdict.lex) dict.lex = dbdict.lex;
+//                 else if (dbdict.vlex) dict.vlex = dbdict.vlex;
+//                 else if (dbdict.trns) dict.lex = dbdict.trns; // FIXME: это в словате BG:, должно уйти в .lex
+//                 if (!pdicts[pada]) pdicts[pada] = [];
+//                 pdicts[pada].push(dict);
+//             });
+//         });
+//     });
+//     return pdicts;
+// }
 
 function options(samasa, next) {
     var opt = {};
