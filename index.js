@@ -30,6 +30,7 @@ function morpheus() {
 // main
 // должен возвращать полностью сформированный список вариантов с весами-вероятностями
 morpheus.prototype.run = function(samasa, next, cb) {
+    // log('======MORPHEUS========', samasa);
     if (!next) next = 'इ'; // FIXME:
     var opt = options(samasa, next);
     clean = samasa;
@@ -41,7 +42,8 @@ morpheus.prototype.run = function(samasa, next, cb) {
     terms = _.uniq(_.flatten(terms));
     // log('CHAINS size:', chains.length);
     var stems = _.uniq(_.flatten(chains));
-    var queries = stems.map(function(stem) { return {query: stem, flake: stem}});
+    // var queries = stems.map(function(stem) { return {query: stem, flake: stem}});
+    var queries = []; // они все должны появиться в stemmer
 
     if (next) {
         // здесь нужно добавлять слово с флексией, иначе не найдет в словаре, а в тесте - убирать, иначе не сравнит с chains
@@ -58,9 +60,10 @@ morpheus.prototype.run = function(samasa, next, cb) {
     // и пока что непорядок sena - senayoH - locative - должен дать 100% веса, yoH - флексия
     // TODO: а он даже не обнаруживается <<<<=====================
     var stem;
-    queries.forEach(function(q) {
-        stem = q.query;
-        if (syllables(stem) < 2) return;
+    // queries.forEach(function(q) {
+    stems.forEach(function(stem) {
+        // stem = q.query;
+        // if (syllables(stem) < 2) return;
         var qs = stemmer.get(stem); // धनुरुद्यम्ये
         // if (stem == 'ऊपस्थे')
         qs.forEach(function(q) { q.flake = stem});
@@ -97,8 +100,9 @@ morpheus.prototype.run = function(samasa, next, cb) {
         //
         // pdchs.dicts = dict4pdch(pdchs.pdchs, dbdicts);
 
-        // только нужные queries, включающие нужные stem+term:
-        qcleans = _.select(queries, function(q) { return inc(dstems, q.query)});
+        // только нужные queries, включающие нужные stem+term, которым нашелся dict:
+        var qcleans = _.select(queries, function(q) { return inc(dstems, q.query)});
+        // qcleans = queries;
         // log('QCLs', qcleans);
         // var dicts = dict4pdch(pdchs.chains, dbdicts); // << == это неверно, нужны не chains, a чистые queries
         var dicts = dict4query(qcleans, dbdicts);
@@ -157,7 +161,8 @@ function filterChain(chains, flakes) {
 
 function dict4query(queries, dbdicts) {
     // log('Queries', queries);
-    // log('Dbdicts', dbdicts.length)
+    // log('Dbdicts', dbdicts.length);
+    // FIXME: TODO: как быть - м.б. dict, не соотв. query = одно verb, другое name - нужно убирать из queries, очищать
     var pdicts = {};
     queries.forEach(function(q) {
         dbdicts.forEach(function(d) {
