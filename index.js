@@ -82,45 +82,57 @@ morpheus.prototype.run = function(samasa, next, cb) {
     // getDictsSa(qstems, function(err, dbdicts) {
         // p('DBDicts', err, dbdicts);
         // TODO: теперь установить соответствие между chains и dbdicts
-        // log('D-flakes', dbdicts);
+        // log('Dbdicts', dbdicts);
 
-        /*
-           создаю совсем новые, короткие queries - qcleans
-           dbdicts - BG и Term - сравниваю с q.flake
-        */
-        var qcleans = [];
-        var dicts = [];
+        var dterms = _.select(dbdicts, function(d) { return (d.dict == 'BG' || d.dict == 'Term')});
+        var dmorphs = _.select(dbdicts, function(d) { return (d.dict == 'mw' || d.dict == 'Apte')});
+
+        var qterms = [];
+        var keys = {};
         queries.forEach(function(q) {
-            dbdicts.forEach(function(d) {
-                var qclean;
-                if (d.dict == 'BG' || d.dict == 'Term') { // FIXME: dict - прописными, или наоборот
-                    if (q.flake == d.stem) {
-                        qclean = {flake: q.flake, dict: d.stem}; // d здесь единственный, н.я.п.
-                        dicts.push(d);
-                    }
-                } else if (d.dict == 'mw' || d.dict == 'Apte') {
-                    if (q.query != d.stem) return;
-                    qclean = {flake: q.flake, dict: d.stem};
-                    if (q.pos == 'plain' && d.lex) ; // log('pos PLAIN', d.stem, d);//
-                    else if (q.pos == 'name' && d.lex) {
-                        qclean.name = true;
-                        qclean.morphs = q.morphs;
-                    } else if (q.pos == 'verb' && d.vlex) {
-                            qclean.verb = true;
-                            qclean.morphs = q.morphs;
-                    } else {
-                        // log('Q', q.pos, d.verb)
-                        // if (!d.verb) log('QQ', d)
-                    }
-                    // log('QQ', q.pos, 'flake', q.flake, 'dict', d.stem, d.name);
-                    // if (q.flake == 'आशम्' && !d.name) log('Q', q, '\n', 'D', d)
-                    d.flake = q.flake; // для надежного опознания
-                    dicts.push(d);
-                    qcleans.push(qclean)
-                }
+            dterms.forEach(function(d) {
+                if (q.flake != d.stem) return;
+                if (keys[q.flake]) return;
+                var qclean = {flake: q.flake, dicts: [d]};
+                qterms.push(qclean)
+                keys[q.flake] = true;
             });
         });
-        log('Q', qcleans)
+        // p('Qterms', qterms);
+
+        var qmorphs = [];
+        queries.forEach(function(q) {
+            var qclean = {flake: q.flake, dicts: []};
+            dmorphs.forEach(function(d) {
+                var ok = false;
+                if (q.query != d.stem) return;
+                if (q.pos == 'plain' && d.lex) ok = true;
+                else if (q.pos == '????' && d.ind) {
+                    // FIXME: indecl - как-то бы нужно объединить с BG?
+                } else if (q.pos == 'name' && d.name) {
+                    qclean.name = true;
+                    qclean.morphs = q.morphs;
+                    ok = true;
+                } else if (q.pos == 'verb' && d.vlex) {
+                    qclean.verb = true;
+                    qclean.morphs = q.morphs;
+                    ok = true;
+                } else {
+                    // log('Q', q.pos, d.verb)
+                    // if (!d.verb) log('QQ', d)
+                }
+                if (ok) qclean.dicts.push(d);
+            });
+            if (qclean.dicts.length > 0) qmorphs.push(qclean);
+        });
+        // p('Qmorphs', qmorphs);
+
+        var qcleans = qterms.concat(qmorphs);
+        var test = _.select(qcleans, function(q) { return q.flake == 'विनाशम्'});
+        p('T', test);
+
+
+
         var res = {queries: [], dicts: [], pdchs: []}
         cb(res);
         return;
