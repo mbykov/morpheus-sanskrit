@@ -128,12 +128,16 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // p('Qmorphs', qmorphs);
 
         var qcleans = qterms.concat(qmorphs);
-        var test = _.select(qcleans, function(q) { return q.flake == 'विनाशम्'});
-        p('T', test);
+        // var test = _.select(qcleans, function(q) { return q.flake == 'विनाशम्'});
+        // p('T', qcleans);
+        // выбрать только те flakes, query которых найдены в dicts:
+        var flakes = qcleans.map(function(q) { return q.flake});
+        // log('FL', flakes);
+        var pdchs = filterChain(chains, flakes);
+        // p('PDCHS', pdchs);
 
 
-
-        var res = {queries: [], dicts: [], pdchs: []}
+        var res = {qterms: qterms, qmorphs: qmorphs, pdchs: pdchs};
         cb(res);
         return;
 
