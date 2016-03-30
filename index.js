@@ -83,9 +83,12 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // p('DBDicts', err, dbdicts);
         // TODO: теперь установить соответствие между chains и dbdicts
         // log('Dbdicts', dbdicts);
+        // return;
 
         var dterms = _.select(dbdicts, function(d) { return (d.dict == 'BG' || d.dict == 'Term')});
         var dmorphs = _.select(dbdicts, function(d) { return (d.dict == 'mw' || d.dict == 'Apte')});
+        // log('Dbdicts', dterms);
+        // return;
 
         var qterms = [];
         var keys = {};
@@ -132,42 +135,19 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // p('T', qcleans);
         // выбрать только те flakes, query которых найдены в dicts:
         var flakes = qcleans.map(function(q) { return q.flake});
-        // log('FL', flakes);
-        var pdchs = filterChain(chains, flakes);
-        // p('PDCHS', pdchs);
-
-
-        var res = {qterms: qterms, qmorphs: qmorphs, pdchs: pdchs};
-        cb(res);
-        return;
-
-        // выбрать только те flakes, query которых найдены в dicts:
-        // вот это неверно?
-        var dstems = _.uniq(dbdicts.map(function(dict) { return dict.stem}));
-        // log('D', dstems);
-        // log('Q', queries);
-
-        // здесь: беда в том, что dict м.б. равен одному flake, и быть в составе dict+term для другого, чего сейчас нет:
-        var flakes = [];
-        queries.forEach(function(q) {
-            if (inc(dstems, q.query)) flakes.push(q.flake || q.query);
-        });
         flakes =_.uniq(flakes);
-        // log('FLAKES', flakes);
-        var pdchs = filterChain(chains, flakes);
-        //
-        // только нужные queries, включающие нужные stem+term, которым нашелся dict:
-        var qqs = _.select(queries, function(q) { return inc(dstems, q.query)});
-        // qqs = queries;
-        // log('QCLs', qqs);
-        // var dicts = dict4pdch(pdchs.chains, dbdicts); // << == это неверно, нужны не chains, a чистые queries
-        var dicts = dict4query(qqs, dbdicts);
-        // p('D', dicts);
+        // log('FL', flakes);
+        // log('Chains', chains);
+        var pdch = filterChain(chains, flakes);
+        // p('PDCHS', pdch);
 
-        var res = {queries: qqs, dicts: dicts, pdchs: pdchs}
+
+        // var res = {qterms: [], qmorphs: [], pdchs: []};
+        var res = {qterms: qterms, qmorphs: qmorphs};
+        if (pdch.chains) res.pdchs = pdch.chains;
+        else res.holeys = pdch.holeys;
         cb(res);
     });
-    // cb('ok');
     return;
 }
 
@@ -188,6 +168,7 @@ function filterChain(chains, flakes) {
             if (inc(chain, flake)) {
                 pdch.weigth += Math.pow(flake.length, 2);
                 ok += 1;
+                // if (flake == 'वन्तः') log('VANTAH', flake, pdch, ok);
             }
         });
         ok += nonuniq; // если не uniq, то ok=1, короче
@@ -205,13 +186,13 @@ function filterChain(chains, flakes) {
         res.chains = _.sortBy(pdchs, function(pdch) { return pdch.weigth}).reverse();
     } else {
         holeys = _.sortBy(holeys, function(pdch) { return pdch.weigth}).reverse();
-        res.holeys = holeys.slice(0, 25);
+        res.holeys = holeys.slice(0, 5); // FIXME: выбрать с одной дырой
     }
     // if (pdchs.length == 0 && holeys.length == 0) {
         // bads = _.sortBy(holeys, function(pdch) { return pdch.weigth}).reverse();
         // res.bads = holeys.slice(0, 25);
     // }
-    return res.chains;
+    return {chains: res.chains, holeys: res.holeys} ;
 }
 
 
