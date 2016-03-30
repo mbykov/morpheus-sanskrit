@@ -83,6 +83,48 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // p('DBDicts', err, dbdicts);
         // TODO: теперь установить соответствие между chains и dbdicts
         // log('D-flakes', dbdicts);
+
+        /*
+           создаю совсем новые, короткие queries - qcleans
+           dbdicts - BG и Term - сравниваю с q.flake
+        */
+        var qcleans = [];
+        var dicts = [];
+        queries.forEach(function(q) {
+            dbdicts.forEach(function(d) {
+                var qclean;
+                if (d.dict == 'BG' || d.dict == 'Term') { // FIXME: dict - прописными, или наоборот
+                    if (q.flake == d.stem) {
+                        qclean = {flake: q.flake, dict: d.stem}; // d здесь единственный, н.я.п.
+                        dicts.push(d);
+                    }
+                } else if (d.dict == 'mw' || d.dict == 'Apte') {
+                    if (q.query != d.stem) return;
+                    qclean = {flake: q.flake, dict: d.stem};
+                    if (q.pos == 'plain' && d.lex) ; // log('pos PLAIN', d.stem, d);//
+                    else if (q.pos == 'name' && d.lex) {
+                        qclean.name = true;
+                        qclean.morphs = q.morphs;
+                    } else if (q.pos == 'verb' && d.vlex) {
+                            qclean.verb = true;
+                            qclean.morphs = q.morphs;
+                    } else {
+                        // log('Q', q.pos, d.verb)
+                        // if (!d.verb) log('QQ', d)
+                    }
+                    // log('QQ', q.pos, 'flake', q.flake, 'dict', d.stem, d.name);
+                    // if (q.flake == 'आशम्' && !d.name) log('Q', q, '\n', 'D', d)
+                    d.flake = q.flake; // для надежного опознания
+                    dicts.push(d);
+                    qcleans.push(qclean)
+                }
+            });
+        });
+        log('Q', qcleans)
+        var res = {queries: [], dicts: [], pdchs: []}
+        cb(res);
+        return;
+
         // выбрать только те flakes, query которых найдены в dicts:
         // вот это неверно?
         var dstems = _.uniq(dbdicts.map(function(dict) { return dict.stem}));
@@ -98,17 +140,15 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // log('FLAKES', flakes);
         var pdchs = filterChain(chains, flakes);
         //
-        // pdchs.dicts = dict4pdch(pdchs.pdchs, dbdicts);
-
         // только нужные queries, включающие нужные stem+term, которым нашелся dict:
-        var qcleans = _.select(queries, function(q) { return inc(dstems, q.query)});
-        // qcleans = queries;
-        // log('QCLs', qcleans);
+        var qqs = _.select(queries, function(q) { return inc(dstems, q.query)});
+        // qqs = queries;
+        // log('QCLs', qqs);
         // var dicts = dict4pdch(pdchs.chains, dbdicts); // << == это неверно, нужны не chains, a чистые queries
-        var dicts = dict4query(qcleans, dbdicts);
+        var dicts = dict4query(qqs, dbdicts);
         // p('D', dicts);
 
-        var res = {queries: qcleans, dicts: dicts, pdchs: pdchs}
+        var res = {queries: qqs, dicts: dicts, pdchs: pdchs}
         cb(res);
     });
     // cb('ok');
@@ -169,7 +209,7 @@ function dict4query(queries, dbdicts) {
             // log('DBDICT', dbdict)
             var stem = d.stem;
             if (stem != q.query) return;
-            var dict = {stem: stem};
+            var dict = {dict: d.dict, stem: stem};
             if (d.lex) dict.lex = d.lex;
             else if (d.vlex) dict.vlex = d.vlex;
             else if (d.trns) dict.lex = d.trns; // FIXME: это в словате BG:, должно уйти в .lex
