@@ -82,18 +82,25 @@ morpheus.prototype.run = function(samasa, next, cb) {
     // getDictsSa(qstems, function(err, dbdicts) {
         // p('DBDicts', err, dbdicts);
         // TODO: теперь установить соответствие между chains и dbdicts
+        /*
+          придется подумать. В BG у меня единственный dict. В MW хорошо бы тоже, но нет.
+         */
         // log('Dbdicts', dbdicts);
         // return;
 
-        var dterms = _.select(dbdicts, function(d) { return (d.dict == 'BG' || d.dict == 'Term')});
-        var dmorphs = _.select(dbdicts, function(d) { return (d.dict == 'mw' || d.dict == 'Apte')});
+        // var dterms = _.select(dbdicts, function(d) { return (d.type == 'BG' || d.type == 'term')});
+        // var dmorphs = _.select(dbdicts, function(d) { return (d.type == 'mw' || d.type == 'Apte')});
+        var dterms = _.select(dbdicts, function(d) { return (d.type == 'BG')});
+        var dmorphs = _.select(dbdicts, function(d) { return (d.type == 'mw' || d.type == 'Apte' || d.type == 'term')});
         // log('Dbdicts', dterms);
         // return;
 
+        // а как тут может быть не-единственность? в BG? ее не может быть же?
         var qterms = [];
         var keys = {};
         queries.forEach(function(q) {
             dterms.forEach(function(d) {
+                if (d.pdchs) return; // это расшифровка pdchs из словаря BG, цель, то, что нужно найти. Здесь оно д.б. пропущено
                 if (q.flake != d.stem) return;
                 if (keys[q.flake]) return;
                 var qclean = {flake: q.flake, dicts: [d]};
@@ -102,16 +109,29 @@ morpheus.prototype.run = function(samasa, next, cb) {
             });
         });
         // p('Qterms', qterms);
+        // return;
 
         var qmorphs = [];
         queries.forEach(function(q) {
             var qclean = {flake: q.flake, dicts: []};
+            if (q.term) qclean.term = q.term;
+            if (q.query) qclean.dict = q.query; // FIXME: а q.query всегда есть? И q.term всегда, если .morphs?
             dmorphs.forEach(function(d) {
                 var ok = false;
                 if (q.query != d.stem) return;
-                if (q.pos == 'plain' && d.lex) ok = true;
-                else if (q.pos == '????' && d.ind) {
+                if (q.pos == 'plain' && d.lex) ok = true; // вот что это?
+                else if (d.type == 'term') {
+                    if (q.flake != d.stem) return;
+                    // qclean.term = true;
+                    // qclean.morphs = {pos: d.pos, var: d.var, gend: d.gend, key: d.key, dict: d.dict};
+                    qclean.morphs = d.morphs;
+                    qclean.dict = d.stem;
+                    qclean.term = ''; // это полная форма, здесь term-a нет
+                    ok = true;
+                    // log('Term', d);
+                } else if (q.pos == '????' && d.ind) {
                     // FIXME: indecl - как-то бы нужно объединить с BG?
+                    // здесь попросту нет morph?
                 } else if (q.pos == 'name' && d.name) {
                     qclean.name = true;
                     qclean.morphs = q.morphs;
@@ -138,15 +158,18 @@ morpheus.prototype.run = function(samasa, next, cb) {
         flakes =_.uniq(flakes);
         // log('FL', flakes);
         // log('Chains', chains);
+        if (!chains[0]) p('NO CHAINS', samasa, flakes);
         var pdch = filterChain(chains, flakes);
         // p('PDCHS', pdch);
 
 
         // var res = {qterms: [], qmorphs: [], pdchs: []};
-        var res = {qterms: qterms, qmorphs: qmorphs};
+        // var res = {qterms: qterms, qmorphs: qmorphs};
+        var res = {queries: qcleans};
         if (pdch.chains) res.pdchs = pdch.chains;
         else res.holeys = pdch.holeys;
         cb(res);
+        // cb([]);
     });
     return;
 }
@@ -158,6 +181,7 @@ function filterChain(chains, flakes) {
     var pdchs = [];
     var holeys = [];
     var bads = [];
+    // здесь возникает ошибка, нет chains[0]
     var total = Math.pow(chains[0].join('').length, 2);
     chains.forEach(function(chain) {
         var nonuniq = 0;
@@ -196,48 +220,27 @@ function filterChain(chains, flakes) {
 }
 
 
-function dict4query(queries, dbdicts) {
-    // log('Queries', queries);
-    // log('Dbdicts', dbdicts.length);
-    // FIXME: TODO: как быть - м.б. dict, не соотв. query = одно verb, другое name - нужно убирать из queries, очищать
-    var pdicts = {};
-    queries.forEach(function(q) {
-        dbdicts.forEach(function(d) {
-            // log('DBDICT', dbdict)
-            var stem = d.stem;
-            if (stem != q.query) return;
-            var dict = {dict: d.dict, stem: stem};
-            if (d.lex) dict.lex = d.lex;
-            else if (d.vlex) dict.vlex = d.vlex;
-            else if (d.trns) dict.lex = d.trns; // FIXME: это в словате BG:, должно уйти в .lex
-            if (!pdicts[stem]) pdicts[stem] = [dict];
-            // else pdicts[stem].push(dict);
-        });
-    });
-    return pdicts;
-}
-
-// function dict4pdch(pdchs, dbdicts) {
-//     // log('Pdchs', pdchs.length)
-//     // log('Dbdicts', dbdicts.length) // <=== вот тут вот неединственность
+// function dict4query(queries, dbdicts) {
+//     // log('Queries', queries);
+//     // log('Dbdicts', dbdicts.length);
+//     // FIXME: TODO: как быть - м.б. dict, не соотв. query = одно verb, другое name - нужно убирать из queries, очищать
 //     var pdicts = {};
-//     pdchs.forEach(function(pdch) {
-//         pdch.chain.forEach(function(pada) {
-//             dbdicts.forEach(function(dbdict) {
-//                 // log('DBDICT', dbdict)
-//                 if (dbdict.stem != pada) return;
-//                 var dict = {stem: dbdict.stem};
-//                 // dict.flake = flake;
-//                 if (dbdict.lex) dict.lex = dbdict.lex;
-//                 else if (dbdict.vlex) dict.vlex = dbdict.vlex;
-//                 else if (dbdict.trns) dict.lex = dbdict.trns; // FIXME: это в словате BG:, должно уйти в .lex
-//                 if (!pdicts[pada]) pdicts[pada] = [];
-//                 pdicts[pada].push(dict);
-//             });
+//     queries.forEach(function(q) {
+//         dbdicts.forEach(function(d) {
+//             // log('DBDICT', dbdict)
+//             var stem = d.stem;
+//             if (stem != q.query) return;
+//             var dict = {dict: d.dict, stem: stem};
+//             if (d.lex) dict.lex = d.lex;
+//             else if (d.vlex) dict.vlex = d.vlex;
+//             else if (d.trns) dict.lex = d.trns; // FIXME: это в словате BG:, должно уйти в .lex
+//             if (!pdicts[stem]) pdicts[stem] = [dict];
+//             // else pdicts[stem].push(dict);
 //         });
 //     });
 //     return pdicts;
 // }
+
 
 function options(samasa, next) {
     var opt = {};
