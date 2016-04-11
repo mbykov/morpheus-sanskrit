@@ -11,7 +11,7 @@ var log = u.log;
 var p = u.p;
 var rasper = require('flakes');
 var outer = require('./lib/outer');
-var stemmer = require('../stemmer');
+var stemmer = require('stemmer');
 
 dbpath = 'http://admin:kjre4317@localhost:5984';
 var Relax = require('relax-component');
@@ -64,7 +64,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
     stems.forEach(function(stem) {
         // stem = q.query;
         // if (syllables(stem) < 2) return;
-        var qs = stemmer.get(stem); // धनुरुद्यम्ये
+        var qs = stemmer.query(stem);
         // if (stem == 'ऊपस्थे')
         qs.forEach(function(q) { q.flake = stem});
         // log('===========', qs);
@@ -76,7 +76,8 @@ morpheus.prototype.run = function(samasa, next, cb) {
     //    if (first.length == 1 && !inc(['च', 'न', 'स', 'ॐ'], first)) return;
     qstems = _.select(qstems, function(qstem) { return qstem.length > 1});
     // log('QSTEMS to get', JSON.stringify(qstems));
-    if (debug) log('QSTEMS-all to get', qstems.length);
+    // log('QSTEMS-all to get', qstems);
+    // return;
 
     getDicts(qstems, function(err, dbdicts) {
     // getDictsSa(qstems, function(err, dbdicts) {
