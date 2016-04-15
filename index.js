@@ -125,14 +125,18 @@ morpheus.prototype.run = function(samasa, next, cb) {
             dmorphs.forEach(function(d) {
                 var ok = false;
                 if (d.verb && q.la) {
+                    // ???? в verb каждой query соотв. всегда только один dict ????
                     if (q.query == d.stem || (!d.slps && inc(d.forms, q.query) )) { // !d.slps - to strip samasas
                         /*
                           TODO: d.vlexes - выбрать из них только то, что отвечает query?
                           или нужны все?
                          */
-                        var morph = {la: q.la, pada: q.pada, key: q.key, gana: q.gana};
                         qclean.verb = true;
-                        qclean.morphs = [morph];
+                        qclean.dict = d.stem;
+                        var morph = {la: q.la, pada: q.pada, key: q.key, gana: q.gana};
+                        // ????? и всегда только один morph ????
+                        // qclean.morphs = [morph];
+                        qclean.morph = morph;
                         ok = true;
                         // log('QV', q, d.slp);
                     }
@@ -157,6 +161,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
                     } else if (q.pos == 'name' && d.name) {
                         // log('Q', q)
                         qclean.name = true;
+                        qclean.dict = d.stem;
                         qclean.morphs = q.morphs;
                         ok = true;
                     // } else if (q.pos == 'verb' && d.vlex) {
