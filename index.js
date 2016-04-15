@@ -85,7 +85,13 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // TODO: теперь установить соответствие между chains и dbdicts
         /*
           придется подумать. В BG у меня единственный dict. В MW хорошо бы тоже, но нет.
-         */
+        */
+
+        // пока убрал samasas:
+        dbdicts = _.select(dbdicts, function(d) { return !d.slps});
+        // из-за forms, verbs могут обнаруживаться несколько раз:
+        dbdicts = uniqDict(dbdicts);
+        // log('qstems', qstems);
         // log('Dbdicts', dbdicts);
         // return;
 
@@ -93,7 +99,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // var dmorphs = _.select(dbdicts, function(d) { return (d.type == 'mw' || d.type == 'Apte')});
         var dterms = _.select(dbdicts, function(d) { return (d.type == 'BG')});
         var dmorphs = _.select(dbdicts, function(d) { return (d.type == 'mw' || d.type == 'Apte' || d.type == 'term')});
-        // log('Dbdicts', dterms);
+        // log('Dbdicts', dmorphs);
         // return;
 
         // а как тут может быть не-единственность? в BG? ее не может быть же?
@@ -115,41 +121,59 @@ morpheus.prototype.run = function(samasa, next, cb) {
         var qmorphs = [];
         queries.forEach(function(q) {
             var qclean = {flake: q.flake, dicts: []};
-            if (q.term) qclean.term = q.term;
-            if (q.query) qclean.dict = q.query; // FIXME: а q.query всегда есть? И q.term всегда, если .morphs?
+            // if (q.query) qclean.dict = q.query; // FIXME: а q.query всегда есть? И q.term всегда, если .morphs?
             dmorphs.forEach(function(d) {
                 var ok = false;
-                if (q.query != d.stem) return;
-                if (q.pos == 'plain' && d.lex) ok = true; // вот что это?
-                else if (d.type == 'term') {
-                    if (q.flake != d.stem) return;
-                    // qclean.term = true;
-                    // qclean.morphs = {pos: d.pos, var: d.var, gend: d.gend, key: d.key, dict: d.dict};
-                    qclean.morphs = d.morphs;
-                    qclean.dict = d.stem;
-                    qclean.term = ''; // это полная форма, здесь term-a нет
-                    ok = true;
-                    // log('Term', d);
-                } else if (q.pos == '????' && d.ind) {
-                    // FIXME: indecl - как-то бы нужно объединить с BG?
-                    // здесь попросту нет morph?
-                } else if (q.pos == 'name' && d.name) {
-                    qclean.name = true;
-                    qclean.morphs = q.morphs;
-                    ok = true;
-                } else if (q.pos == 'verb' && d.vlex) {
-                    qclean.verb = true;
-                    qclean.morphs = q.morphs;
-                    ok = true;
+                if (d.verb && q.la) {
+                    if (q.query == d.stem || (!d.slps && inc(d.forms, q.query) )) { // !d.slps - to strip samasas
+                        /*
+                          TODO: d.vlexes - выбрать из них только то, что отвечает query?
+                          или нужны все?
+                         */
+                        var morph = {la: q.la, pada: q.pada, key: q.key, gana: q.gana};
+                        qclean.verb = true;
+                        qclean.morphs = [morph];
+                        ok = true;
+                        // log('QV', q, d.slp);
+                    }
                 } else {
-                    // log('Q', q.pos, d.verb)
-                    // if (!d.verb) log('QQ', d)
+                    if (q.query != d.stem) return;
+                    // qclean.q = q;
+                    // if (q.term) qclean.term = q.term; // FIXME: всегда q.term, если не verb?
+                    qclean.term = q.term; // FIXME: всегда q.term, если не verb?
+                    if (q.pos == 'plain' && d.lex) ok = true; // вот что это?
+                    else if (d.type == 'term') {
+                        if (q.flake != d.stem) return;
+                        // qclean.term = true;
+                        // qclean.morphs = {pos: d.pos, var: d.var, gend: d.gend, key: d.key, dict: d.dict};
+                        qclean.morphs = d.morphs;
+                        qclean.dict = d.stem;
+                        qclean.term = ''; // это полная форма, здесь term-a нет
+                        ok = true;
+                        // log('Term', d);
+                    // } else if (q.pos == '????' && d.ind) {
+                        // FIXME: indecl - как-то бы нужно объединить с BG?
+                        // здесь попросту нет morph?
+                    } else if (q.pos == 'name' && d.name) {
+                        // log('Q', q)
+                        qclean.name = true;
+                        qclean.morphs = q.morphs;
+                        ok = true;
+                    // } else if (q.pos == 'verb' && d.vlex) {
+                        // qclean.verb = true;
+                        // qclean.morphs = q.morphs;
+                        // ok = true;
+                    } else {
+                        // log('Q', q.pos, d.verb)
+                        // if (!d.verb) log('QQ', d)
+                    }
                 }
                 if (ok) qclean.dicts.push(d);
             });
             if (qclean.dicts.length > 0) qmorphs.push(qclean);
         });
         // p('Qmorphs', qmorphs);
+        // return;
 
         var qcleans = qterms.concat(qmorphs);
         // var test = _.select(qcleans, function(q) { return q.flake == 'विनाशम्'});
@@ -287,6 +311,21 @@ function syllables(flake) {
         else if (s == c.virama) vows-=1;
     });
     return vows;
+}
+
+function uniqDict(dicts) {
+    var keys = {};
+    var uniqs = [];
+    dicts.forEach(function(d) {
+        // if (!keys[d._id]) uniqs.push(d);
+        if (!keys[d._id]) {
+            // log('D===', d._id, keys[d._id]);
+            uniqs.push(d);
+            keys[d._id] = true;
+            // log('D== 2', d._id, keys[d._id]);
+        }
+    });
+    return uniqs;
 }
 
 
