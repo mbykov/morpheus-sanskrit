@@ -40,18 +40,20 @@ morpheus.prototype.run = function(samasa, next, cb) {
     // log('CLEAN', clean);
     var chains = rasper.cut(clean);
     if (!chains || chains.length == 0) throw new Error('no chains');
-    // log('CHAINS size:', chains.length);
+    // log('CHAINS size:', chains);
     var ochains = outer.chains(chains);
-    // log('CHAINS o:', ochains);
+    // log('oCHAINS:', ochains);
     var totalchains = (ochains) ? chains.concat(ochains) : chains;
+    // log('totalchains:', totalchains.length);
+    // return;
 
     var stems = _.uniq(_.flatten(totalchains));
     // var queries = stems.map(function(stem) { return {query: stem, flake: stem}});
     var queries = []; // все plains должны появиться в stemmer ?
 
     // log('QUERIES to get', queries);
-    log('STEMS-flakes to get', stems, stems.length);
-    return;
+    // log('STEMS-flakes to get', stems, stems.length);
+    // return;
 
     var stem;
     stems.forEach(function(stem) {
@@ -162,6 +164,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
         var flakes = qcleans.map(function(q) { return q.flake});
         flakes =_.uniq(flakes);
         // log('FL', flakes);
+        // return;
         // log('Chains', chains);
         if (!chains[0]) p('NO CHAINS', samasa, flakes);
         var pdch = filterChain(chains, flakes);
