@@ -39,33 +39,19 @@ morpheus.prototype.run = function(samasa, next, cb) {
     if (opt.fin == c.anusvara) clean = outer.correctM(samasa, opt);
     // log('CLEAN', clean);
     var chains = rasper.cut(clean);
+    if (!chains || chains.length == 0) throw new Error('no chains');
     // log('CHAINS size:', chains.length);
+    var ochains = outer.chains(chains);
+    // log('CHAINS o:', ochains);
+    var totalchains = (ochains) ? chains.concat(ochains) : chains;
 
-    var stems = _.uniq(_.flatten(chains));
+    var stems = _.uniq(_.flatten(totalchains));
     // var queries = stems.map(function(stem) { return {query: stem, flake: stem}});
     var queries = []; // все plains должны появиться в stemmer ?
 
-    var terms = chains.map(function(chain) { return u.last(chain)});
-    terms = _.uniq(_.flatten(terms));
-    // var odds = outer.odd(terms, opt, clean, next);
-    // if (next) {
-        // log('odds', odds);
-        // queries = queries.concat(odds);
-    // }
-    // нужно добавить варианты ко всем последним pada в каждой цепочке? Или дублировать всю цепочку?
-    // вряд-ли дублировать, потому что пригодится всегда лишь один вариант из двух
-    var outerms = terms.map(function(term) { return outer.correct(term)});
-    if (outerms.length > 0) stems = stems.concat(outerms);
-    // log('OUTERMS', stems);
-    // return;
-
     // log('QUERIES to get', queries);
-    if (debug) log('STEMS-flakes to get', stems.length);
-
-    // добавляю stems по tin-sup флексиям
-    // FIXME: TODO: stemmer дает ошибку на senayoH - д.б. только du.loc, а он дает много вариантов
-    // и пока что непорядок sena - senayoH - locative - должен дать 100% веса, yoH - флексия
-    // TODO: а он даже не обнаруживается <<<<=====================
+    log('STEMS-flakes to get', stems, stems.length);
+    return;
 
     var stem;
     stems.forEach(function(stem) {
@@ -78,6 +64,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // log('QS', stem, qs);
         queries = queries.concat(qs);
     });
+
     var qstems = _.uniq(queries.map(function(q) { return q.query}));
     // FIXME: TODO: убрать a и еще некоторые короткие? oM?
     // if (first.length == 1 && !inc(['च', 'न', 'स', 'ॐ'], first)) return;
@@ -89,12 +76,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
     getDicts(qstems, function(err, dbdicts) {
     // getDictsSa(qstems, function(err, dbdicts) {
         // p('DBDicts', err, dbdicts);
-        // TODO: теперь установить соответствие между chains и dbdicts
-        /*
-          придется подумать. В BG у меня единственный dict. В MW хорошо бы тоже, но нет.
-        */
-
-        // пока убрал samasas:
+        // убрал samasas из dbdicts:
         dbdicts = _.select(dbdicts, function(d) { return !d.slps});
         // из-за forms, verbs могут обнаруживаться несколько раз:
         dbdicts = uniqDict(dbdicts);
@@ -102,8 +84,6 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // log('Dbdicts', dbdicts);
         // return;
 
-        // var dterms = _.select(dbdicts, function(d) { return (d.type == 'BG' || d.type == 'term')});
-        // var dmorphs = _.select(dbdicts, function(d) { return (d.type == 'mw' || d.type == 'Apte')});
         var dterms = _.select(dbdicts, function(d) { return (d.type == 'BG')});
         var dmorphs = _.select(dbdicts, function(d) { return (d.type == 'mw' || d.type == 'Apte' || d.type == 'term')});
         // log('Dbdicts', dmorphs);
@@ -134,23 +114,16 @@ morpheus.prototype.run = function(samasa, next, cb) {
                 if (d.verb && q.la) {
                     // ???? в verb каждой query соотв. всегда только один dict ????
                     if (q.query == d.stem || (!d.slps && inc(d.forms, q.query) )) { // !d.slps - to strip samasas
-                        /*
-                          TODO: d.vlexes - выбрать из них только то, что отвечает query?
-                          или нужны все?
-                         */
+                        // TODO: d.vlexes - выбрать из них только то, что отвечает query? или нужны все?
                         qclean.verb = true;
                         qclean.dict = d.stem;
-                        var morph = {la: q.la, pada: q.pada, key: q.key, gana: q.gana};
-                        // ????? и всегда только один morph ????
-                        // qclean.morphs = [morph];
+                        var morph = {la: q.la, pada: q.pada, key: q.key, gana: q.gana};   // ????? и всегда только один morph ????
                         qclean.morph = morph;
                         ok = true;
                         // log('QV', q, d.slp);
                     }
                 } else {
                     if (q.query != d.stem) return;
-                    // qclean.q = q;
-                    // if (q.term) qclean.term = q.term; // FIXME: всегда q.term, если не verb?
                     qclean.term = q.term; // FIXME: всегда q.term, если не verb?
                     if (q.pos == 'plain' && d.lex) ok = true; // вот что это?
                     else if (d.type == 'term') {
@@ -162,19 +135,12 @@ morpheus.prototype.run = function(samasa, next, cb) {
                         qclean.term = ''; // это полная форма, здесь term-a нет
                         ok = true;
                         // log('Term', d);
-                    // } else if (q.pos == '????' && d.ind) {
-                        // FIXME: indecl - как-то бы нужно объединить с BG?
-                        // здесь попросту нет morph?
                     } else if (q.pos == 'name' && d.name) {
                         // log('Q', q)
                         qclean.name = true;
                         qclean.dict = d.stem;
                         qclean.morphs = q.morphs;
                         ok = true;
-                    // } else if (q.pos == 'verb' && d.vlex) {
-                        // qclean.verb = true;
-                        // qclean.morphs = q.morphs;
-                        // ok = true;
                     } else {
                         // log('Q', q.pos, d.verb)
                         // if (!d.verb) log('QQ', d)
@@ -187,9 +153,11 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // p('Qmorphs', qmorphs);
         // return;
 
+        // qcleans это query, к которым есть dicts:
         var qcleans = qterms.concat(qmorphs);
-        // var test = _.select(qcleans, function(q) { return q.flake == 'विनाशम्'});
         // p('T', qcleans);
+        // return;
+
         // выбрать только те flakes, query которых найдены в dicts:
         var flakes = qcleans.map(function(q) { return q.flake});
         flakes =_.uniq(flakes);
@@ -197,8 +165,13 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // log('Chains', chains);
         if (!chains[0]) p('NO CHAINS', samasa, flakes);
         var pdch = filterChain(chains, flakes);
-        // p('PDCHS', pdch);
-
+        p('PDCHS', pdch);
+        var opdch;
+        if (ochains) opdch = filterChain(ochains, flakes);
+        p('oPDCHS', opdch);
+        cb([]);
+        return;
+        // и посчитать max из первых пяти pdchs и opdchs
 
         // var res = {qterms: [], qmorphs: [], pdchs: []};
         // var res = {qterms: qterms, qmorphs: qmorphs};
