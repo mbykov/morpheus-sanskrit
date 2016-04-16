@@ -30,28 +30,35 @@ function morpheus() {
 // main
 // должен возвращать полностью сформированный список вариантов с весами-вероятностями
 morpheus.prototype.run = function(samasa, next, cb) {
-    // log('======MORPHEUS========', samasa);
-    if (!next) next = 'इ'; // FIXME:
+    log('======MORPHEUS========', samasa, 'next', next);
+    // next-a у меня нет, и не будет, будет as if soft
+    // if (!next) next = 'इ'; // FIXME:
+    // next я определить не могу. Сл., нужно добавить вариант, as if он влияет, а влияет soft обычно
     var opt = options(samasa, next);
     clean = samasa;
     if (opt.fin == c.anusvara) clean = outer.correctM(samasa, opt);
     // log('CLEAN', clean);
     var chains = rasper.cut(clean);
+    // log('CHAINS size:', chains.length);
+
+    var stems = _.uniq(_.flatten(chains));
+    // var queries = stems.map(function(stem) { return {query: stem, flake: stem}});
+    var queries = []; // все plains должны появиться в stemmer ?
 
     var terms = chains.map(function(chain) { return u.last(chain)});
     terms = _.uniq(_.flatten(terms));
-    // log('CHAINS size:', chains.length);
-    var stems = _.uniq(_.flatten(chains));
-    // var queries = stems.map(function(stem) { return {query: stem, flake: stem}});
-    var queries = []; // они все должны появиться в stemmer
-
-    if (next) {
-        // здесь нужно добавлять слово с флексией, иначе не найдет в словаре, а в тесте - убирать, иначе не сравнит с chains
-        // теперь в словаре нет флексии, ===> но изменение пока не отражено в переводе
-        // var odds = outer.odd(terms, opt, clean, next);
+    // var odds = outer.odd(terms, opt, clean, next);
+    // if (next) {
         // log('odds', odds);
         // queries = queries.concat(odds);
-    }
+    // }
+    // нужно добавить варианты ко всем последним pada в каждой цепочке? Или дублировать всю цепочку?
+    // вряд-ли дублировать, потому что пригодится всегда лишь один вариант из двух
+    var outerms = terms.map(function(term) { return outer.correct(term)});
+    if (outerms.length > 0) stems = stems.concat(outerms);
+    // log('OUTERMS', stems);
+    // return;
+
     // log('QUERIES to get', queries);
     if (debug) log('STEMS-flakes to get', stems.length);
 
@@ -59,8 +66,8 @@ morpheus.prototype.run = function(samasa, next, cb) {
     // FIXME: TODO: stemmer дает ошибку на senayoH - д.б. только du.loc, а он дает много вариантов
     // и пока что непорядок sena - senayoH - locative - должен дать 100% веса, yoH - флексия
     // TODO: а он даже не обнаруживается <<<<=====================
+
     var stem;
-    // queries.forEach(function(q) {
     stems.forEach(function(stem) {
         // stem = q.query;
         // if (syllables(stem) < 2) return;
@@ -72,8 +79,8 @@ morpheus.prototype.run = function(samasa, next, cb) {
         queries = queries.concat(qs);
     });
     var qstems = _.uniq(queries.map(function(q) { return q.query}));
-    // убрать a и еще некоторые короткие? oM?
-    //    if (first.length == 1 && !inc(['च', 'न', 'स', 'ॐ'], first)) return;
+    // FIXME: TODO: убрать a и еще некоторые короткие? oM?
+    // if (first.length == 1 && !inc(['च', 'न', 'स', 'ॐ'], first)) return;
     qstems = _.select(qstems, function(qstem) { return qstem.length > 1});
     // log('QSTEMS to get', JSON.stringify(qstems));
     // log('QSTEMS-all to get', qstems);
@@ -276,7 +283,7 @@ function options(samasa, next) {
     var opt = {};
     opt.fin = u.last(samasa);
     opt.penult = u.penult(samasa);
-    opt.beg = u.first(next);
+    // opt.beg = u.first(next);
     return opt;
 }
 
