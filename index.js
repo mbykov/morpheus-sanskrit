@@ -30,7 +30,7 @@ function morpheus() {
 // main
 // должен возвращать полностью сформированный список вариантов с весами-вероятностями
 morpheus.prototype.run = function(samasa, next, cb) {
-    log('======MORPHEUS========', samasa, 'next', next);
+    // log('======MORPHEUS========', samasa, 'next', next);
     // next-a у меня нет, и не будет, будет as if soft
     // if (!next) next = 'इ'; // FIXME:
     // next я определить не могу. Сл., нужно добавить вариант, as if он влияет, а влияет soft обычно
