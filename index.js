@@ -70,7 +70,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
     var qstems = _.uniq(queries.map(function(q) { return q.query}));
     // FIXME: TODO: убрать a и еще некоторые короткие? oM?
     // if (first.length == 1 && !inc(['च', 'न', 'स', 'ॐ'], first)) return;
-    qstems = _.select(qstems, function(qstem) { return qstem.length > 1});
+    qstems = _.select(qstems, function(qstem) { return qstem.length > 1 || inc(['च', 'न', 'स', 'ॐ'], qstem)});
     // log('QSTEMS to get', JSON.stringify(qstems));
     // log('QSTEMS-all to get', qstems);
     // return;
@@ -160,7 +160,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // p('T', qcleans);
         // return;
 
-        // выбрать только те flakes, query которых найдены в dicts:
+        // flakes - query из qcleans:
         var flakes = qcleans.map(function(q) { return q.flake});
         flakes =_.uniq(flakes);
         // log('FL', flakes);
@@ -168,19 +168,25 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // log('Chains', chains);
         if (!chains[0]) p('NO CHAINS', samasa, flakes);
         var pdch = filterChain(chains, flakes);
-        p('PDCHS', pdch);
+        // p('PDCHS', pdch);
         var opdch;
         if (ochains) opdch = filterChain(ochains, flakes);
-        p('oPDCHS', opdch);
-        cb([]);
-        return;
+        // p('oPDCHS', opdch);
+
+        // cb([]);
+        // return;
         // и посчитать max из первых пяти pdchs и opdchs
 
-        // var res = {qterms: [], qmorphs: [], pdchs: []};
-        // var res = {qterms: qterms, qmorphs: qmorphs};
+        var max = 0;
+        var omax = 0;
         var res = {queries: qcleans};
-        if (pdch.chains) res.pdchs = pdch.chains;
-        else res.holeys = pdch.holeys;
+        if (pdch && pdch.chains) max =  pdch.chains[0].weigth;
+        if (opdch && opdch.chains) omax =  opdch.chains[0].weigth;
+        if (max >= omax) res.pdchs = pdch.chains;
+        else res.pdchs = opdch.chains;
+        if (!res.pdchs) res.holeys = pdch.holeys || [];
+        // if (pdch.chains) res.pdchs = pdch.chains;
+        // else res.holeys = pdch.holeys;
         cb(res);
         // cb([]);
     });
@@ -231,29 +237,6 @@ function filterChain(chains, flakes) {
     // }
     return {chains: res.chains, holeys: res.holeys} ;
 }
-
-
-// function dict4query(queries, dbdicts) {
-//     // log('Queries', queries);
-//     // log('Dbdicts', dbdicts.length);
-//     // FIXME: TODO: как быть - м.б. dict, не соотв. query = одно verb, другое name - нужно убирать из queries, очищать
-//     var pdicts = {};
-//     queries.forEach(function(q) {
-//         dbdicts.forEach(function(d) {
-//             // log('DBDICT', dbdict)
-//             var stem = d.stem;
-//             if (stem != q.query) return;
-//             var dict = {dict: d.dict, stem: stem};
-//             if (d.lex) dict.lex = d.lex;
-//             else if (d.vlex) dict.vlex = d.vlex;
-//             else if (d.trns) dict.lex = d.trns; // FIXME: это в словате BG:, должно уйти в .lex
-//             if (!pdicts[stem]) pdicts[stem] = [dict];
-//             // else pdicts[stem].push(dict);
-//         });
-//     });
-//     return pdicts;
-// }
-
 
 function options(samasa, next) {
     var opt = {};
