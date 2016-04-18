@@ -86,7 +86,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // log('Dbdicts', dbdicts);
         // return;
 
-        var dterms = _.select(dbdicts, function(d) { return (d.type == 'BG')});
+        var dbgs = _.select(dbdicts, function(d) { return (d.type == 'BG')});
         var dmorphs = _.select(dbdicts, function(d) { return (d.type == 'mw' || d.type == 'Apte' || d.type == 'term')});
         // log('Dbdicts', dmorphs);
         // return;
@@ -95,7 +95,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
         var qterms = [];
         var keys = {};
         queries.forEach(function(q) {
-            dterms.forEach(function(d) {
+            dbgs.forEach(function(d) {
                 if (d.pdchs) return; // это расшифровка pdchs из словаря BG, цель, то, что нужно найти. Здесь оно д.б. пропущено
                 if (q.flake != d.stem) return;
                 if (keys[q.flake]) return;
@@ -125,15 +125,16 @@ morpheus.prototype.run = function(samasa, next, cb) {
                         // log('QV', q, d.slp);
                     }
                 } else {
+                    // путается q.term - окончание и term - тип записи
                     if (q.query != d.stem) return;
                     qclean.term = q.term; // FIXME: всегда q.term, если не verb?
                     if (q.pos == 'plain' && d.lex) ok = true; // вот что это?
                     else if (d.type == 'term') {
                         if (q.flake != d.stem) return;
-                        // qclean.term = true;
-                        // qclean.morphs = {pos: d.pos, var: d.var, gend: d.gend, key: d.key, dict: d.dict};
+                        if (d.pos == 'pron') qclean.pron = true;
                         qclean.morphs = d.morphs;
-                        qclean.dict = d.stem;
+                        qclean.dict = d.dict;
+                        qclean.stem = d.stem; // нужно-ли ?
                         qclean.term = ''; // это полная форма, здесь term-a нет
                         ok = true;
                         // log('Term', d);
