@@ -81,18 +81,20 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // убрал samasas из dbdicts:
         dbdicts = _.select(dbdicts, function(d) { return !d.slps});
         // из-за forms, verbs могут обнаруживаться несколько раз:
-        dbdicts = uniqDict(dbdicts);
+        // dbdicts = uniqDict(dbdicts);
         // log('qstems', qstems);
         // log('Dbdicts', dbdicts);
         // return;
 
         var dbgs = _.select(dbdicts, function(d) { return (d.type == 'BG')});
-        var dmorphs = _.select(dbdicts, function(d) { return (d.type == 'mw' || d.type == 'Apte' || d.type == 'term')});
-        // log('Dbdicts', dmorphs);
+        // var dmorphs = _.select(dbdicts, function(d) { return (d.type == 'mw' || d.type == 'Apte' || d.type == 'term')});
+        var dmorphs = _.select(dbdicts, function(d) { return (d.type == 'mw' || d.type == 'Apte')});
+        var dterms = _.select(dbdicts, function(d) { return d.type == 'term'});
+        // p('Dbdicts', dterms);
         // return;
 
         // а как тут может быть не-единственность? в BG? ее не может быть же?
-        var qterms = [];
+        var qbgs = [];
         var keys = {};
         queries.forEach(function(q) {
             dbgs.forEach(function(d) {
@@ -100,11 +102,24 @@ morpheus.prototype.run = function(samasa, next, cb) {
                 if (q.flake != d.stem) return;
                 if (keys[q.flake]) return;
                 var qclean = {flake: q.flake, dicts: [d]};
-                qterms.push(qclean)
+                qbgs.push(qclean)
                 keys[q.flake] = true;
             });
         });
-        // p('Qterms', qterms);
+        // p('Qterms', qbgs);
+        // return;
+        // var poss = _.select(queries, function(q) { return q.pos == 'plain'})
+        // p('Qs', poss);
+        // return;
+
+        var qterms = dterms.map(function(d) {
+            // log(1, d)
+            var qclean = {flake: d.stem, dict: d.dict, term: '', morphs: d.morphs, dicts: [d]};
+            if (d.pos == 'pron') qclean.pron = true;
+            qclean.stem = d.stem; // нужно-ли ?
+            return qclean;
+        });
+        // log('QTERMS', qterms)
         // return;
 
         var qmorphs = [];
@@ -129,16 +144,18 @@ morpheus.prototype.run = function(samasa, next, cb) {
                     if (q.query != d.stem) return;
                     qclean.term = q.term; // FIXME: всегда q.term, если не verb?
                     if (q.pos == 'plain' && d.lex) ok = true; // вот что это?
-                    else if (d.type == 'term') {
-                        if (q.flake != d.stem) return;
-                        if (d.pos == 'pron') qclean.pron = true;
-                        qclean.morphs = d.morphs;
-                        qclean.dict = d.dict;
-                        qclean.stem = d.stem; // нужно-ли ?
-                        qclean.term = ''; // это полная форма, здесь term-a нет
-                        ok = true;
-                        // log('Term', d);
-                    } else if (q.pos == 'name' && d.name) {
+                    // else if (d.type == 'term') {
+                    //     if (q.flake != d.stem) return;
+                    //     log('Aq', q)
+                    //     log('Ad', d)
+                    //     if (d.pos == 'pron') qclean.pron = true;
+                    //     qclean.morphs = d.morphs;
+                    //     qclean.dict = d.dict;
+                    //     qclean.stem = d.stem; // нужно-ли ?
+                    //     qclean.term = ''; // это полная форма, здесь term-a нет
+                    //     ok = true;
+                    //     // log('Term', d);
+                    else if (q.pos == 'name' && d.name) {
                         // log('Q', q)
                         qclean.name = true;
                         qclean.dict = d.stem;
@@ -157,7 +174,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // return;
 
         // qcleans это query, к которым есть dicts:
-        var qcleans = qterms.concat(qmorphs);
+        var qcleans = qbgs.concat(qmorphs).concat(qterms);
         // p('T', qcleans);
         // return;
 
