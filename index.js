@@ -72,14 +72,14 @@ morpheus.prototype.run = function(samasa, next, cb) {
     // if (first.length == 1 && !inc(['च', 'न', 'स', 'ॐ'], first)) return;
     qstems = _.select(qstems, function(qstem) { return qstem.length > 1 || inc(['च', 'न', 'स', 'ॐ'], qstem)});
     // log('QSTEMS to get', JSON.stringify(qstems));
-    // log('QSTEMS-all to get', qstems);
+    // log('QSTEMS-all to get', qstems, qstems.length);
     // return;
 
     getDicts(qstems, function(err, dbdicts) {
     // getDictsSa(qstems, function(err, dbdicts) {
         // p('DBDicts', err, dbdicts);
-        // убрал samasas из dbdicts:
-        dbdicts = _.select(dbdicts, function(d) { return !d.slps});
+        // убрал samasas из dbdicts: - зачем? этого нельзя делать
+        // dbdicts = _.select(dbdicts, function(d) { return !d.slps});
         // из-за forms, verbs могут обнаруживаться несколько раз:
         // dbdicts = uniqDict(dbdicts);
         // log('qstems', qstems);
