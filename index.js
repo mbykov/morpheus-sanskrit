@@ -128,8 +128,9 @@ morpheus.prototype.run = function(samasa, next, cb) {
             // if (q.query) qclean.dict = q.query; // FIXME: а q.query всегда есть? И q.term всегда, если .morphs?
             dmorphs.forEach(function(d) {
                 var ok = false;
-                if (d.verb && q.la) {
+                if (q.la) {
                     // ???? в verb каждой query соотв. всегда только один dict ????
+                    if (!d.verb)  return;
                     if (q.query == d.stem || (!d.slps && inc(d.forms, q.query) )) { // !d.slps - to strip samasas
                         // TODO: d.vlexes - выбрать из них только то, что отвечает query? или нужны все?
                         qclean.verb = true;
@@ -142,27 +143,23 @@ morpheus.prototype.run = function(samasa, next, cb) {
                 } else {
                     // путается q.term - окончание и term - тип записи
                     if (q.query != d.stem) return;
-                    qclean.term = q.term; // FIXME: всегда q.term, если не verb?
-                    if (q.pos == 'plain' && d.lex) ok = true; // вот что это?
-                    // else if (d.type == 'term') {
-                    //     if (q.flake != d.stem) return;
-                    //     log('Aq', q)
-                    //     log('Ad', d)
-                    //     if (d.pos == 'pron') qclean.pron = true;
-                    //     qclean.morphs = d.morphs;
-                    //     qclean.dict = d.dict;
-                    //     qclean.stem = d.stem; // нужно-ли ?
-                    //     qclean.term = ''; // это полная форма, здесь term-a нет
-                    //     ok = true;
-                    //     // log('Term', d);
-                    else if (q.pos == 'name' && d.name) {
-                        // log('Q', q)
+                    qclean.term = q.term;
+                    // if (q.pos == 'name' && d.name && !d.ind) { // FIXME: это после перезаливки без ind в составных
+                    if (q.pos == 'name' && d.name) {
+                        // log('Q', q, d)
+                        if (!d.lex) return;
                         qclean.name = true;
                         qclean.dict = d.stem;
                         qclean.morphs = q.morphs;
                         ok = true;
+                    } else if (q.pos == 'plain' && d.ind) {
+                        log('=====Q', q.pos, q, d)
+                        qclean.ind = true;
+                        qclean.term = '';
+                        qclean.dict = d.stem;
+                        ok = true;
                     } else {
-                        // log('Q', q.pos, d.verb)
+                        // log('Q', q, q.pos, d)
                         // if (!d.verb) log('QQ', d)
                     }
                 }
@@ -170,12 +167,14 @@ morpheus.prototype.run = function(samasa, next, cb) {
             });
             if (qclean.dicts.length > 0) qmorphs.push(qclean);
         });
-        // p('Qmorphs', qmorphs);
+        // qmorphs = _.select(function(q) { return q.flake == 'अन्तः'});
+        // log('Qmorphs', qmorphs);
         // return;
 
         // qcleans это query, к которым есть dicts:
         var qcleans = qbgs.concat(qmorphs).concat(qterms);
-        // p('T', qcleans);
+        // qcleans = _.select(qcleans, function(q) { return q.flake == 'अन्तः'});
+        // log('Term+', qcleans);
         // return;
 
         // flakes - query из qcleans:
