@@ -70,7 +70,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
     var qstems = _.uniq(queries.map(function(q) { return q.query}));
     // FIXME: TODO: убрать a и еще некоторые короткие? oM?
     // if (first.length == 1 && !inc(['च', 'न', 'स', 'ॐ'], first)) return;
-    qstems = _.select(qstems, function(qstem) { return qstem.length > 1 || inc(['च', 'न', 'स', 'ॐ'], qstem)});
+    qstems = _.select(qstems, function(qstem) { return qstem.length > 1 || inc(['च', 'न', 'स', 'व', 'ॐ'], qstem)});
     // log('QSTEMS to get', JSON.stringify(qstems));
     // log('QSTEMS-all to get', qstems, qstems.length);
     // return;
