@@ -13,7 +13,7 @@ var rasper = require('flakes');
 var outer = require('./lib/outer');
 var stemmer = require('stemmer');
 
-dbpath = 'http://admin:kjre4317@localhost:5984';
+var dbpath = 'http://admin:kjre4317@localhost:5984';
 var Relax = require('relax-component');
 var relax = new Relax(dbpath);
 // relax.dbname('gita-add');
@@ -95,11 +95,12 @@ morpheus.prototype.run = function(samasa, next, cb) {
         var qbgs = [];
         var keys = {};
         queries.forEach(function(q) {
+            // FIXME: здесь должна быть и query тоже
             dbgs.forEach(function(d) {
                 if (d.pdchs) return; // это расшифровка pdchs из словаря BG, цель, то, что нужно найти. Здесь оно д.б. пропущено
                 if (q.flake != d.stem) return;
                 if (keys[q.flake]) return;
-                var qclean = {flake: q.flake, dicts: [d]};
+                var qclean = {flake: q.flake, dicts: [d._id]};
                 qbgs.push(qclean)
                 keys[q.flake] = true;
             });
@@ -112,7 +113,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
 
         var qterms = dterms.map(function(d) {
             // log(1, d)
-            var qclean = {flake: d.stem, dict: d.dict, term: '', morphs: d.morphs, dicts: [d]};
+            var qclean = {flake: d.stem, dict: d.dict, term: '', morphs: d.morphs, dicts: [d._id]};
             if (d.pos == 'pron') qclean.pron = true;
             qclean.stem = d.stem; // нужно-ли ?
             return qclean;
@@ -150,7 +151,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
                         qclean.morphs = q.morphs;
                         ok = true;
                     } else if (q.pos == 'plain' && d.ind) {
-                        log('=====Q', q.pos, q, d)
+                        // log('=====Q', q.pos, q, d)
                         qclean.ind = true;
                         qclean.term = '';
                         qclean.dict = d.stem;
@@ -160,7 +161,9 @@ morpheus.prototype.run = function(samasa, next, cb) {
                         // if (!d.verb) log('QQ', d)
                     }
                 }
-                if (ok) qclean.dicts.push(d);
+                var id = d._id;
+                if (ok) qclean.dicts.push(id);
+                // if (ok) qclean.dicts.push(d);
             });
             if (qclean.dicts.length > 0) qmorphs.push(qclean);
         });
@@ -187,9 +190,6 @@ morpheus.prototype.run = function(samasa, next, cb) {
         if (ochains) opdch = filterChain(ochains, flakes);
         // p('oPDCHS', opdch);
 
-        // cb([]);
-        // return;
-        // и посчитать max из первых пяти pdchs и opdchs
 
         var max = 0;
         var omax = 0;
