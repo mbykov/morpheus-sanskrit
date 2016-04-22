@@ -68,8 +68,6 @@ morpheus.prototype.run = function(samasa, next, cb) {
     });
 
     var qstems = _.uniq(queries.map(function(q) { return q.query}));
-    // FIXME: TODO: убрать a и еще некоторые короткие? oM?
-    // if (first.length == 1 && !inc(['च', 'न', 'स', 'ॐ'], first)) return;
     qstems = _.select(qstems, function(qstem) { return qstem.length > 1 || inc(['च', 'न', 'स', 'व', 'ॐ'], qstem)});
     // log('QSTEMS to get', JSON.stringify(qstems));
     // log('QSTEMS-all to get', qstems, qstems.length);
@@ -145,9 +143,8 @@ morpheus.prototype.run = function(samasa, next, cb) {
                     if (q.query != d.stem) return;
                     qclean.term = q.term;
                     // if (q.pos == 'name' && d.name && !d.ind) { // FIXME: это после перезаливки без ind в составных
-                    if (q.pos == 'name' && d.name) {
+                    if (q.pos == 'name' && d.name && d.lex) {
                         // log('Q', q, d)
-                        if (!d.lex) return;
                         qclean.name = true;
                         qclean.dict = d.stem;
                         qclean.morphs = q.morphs;
