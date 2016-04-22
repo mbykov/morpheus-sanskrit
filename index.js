@@ -88,7 +88,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // var dmorphs = _.select(dbdicts, function(d) { return (d.type == 'mw' || d.type == 'Apte' || d.type == 'term')});
         var dmorphs = _.select(dbdicts, function(d) { return (d.type == 'mw' || d.type == 'Apte')});
         var dterms = _.select(dbdicts, function(d) { return d.type == 'term'});
-        // p('Dbdicts', dterms);
+        // p('Dbdicts', dbdicts);
         // return;
 
         // а как тут может быть не-единственность? в BG? ее не может быть же?
