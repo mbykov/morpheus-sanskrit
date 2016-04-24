@@ -39,7 +39,12 @@ morpheus.prototype.run = function(samasa, next, cb) {
     if (opt.fin == c.anusvara) clean = outer.correctM(samasa, opt);
     // log('CLEAN', clean);
     var chains = rasper.cut(clean);
-    if (!chains || chains.length == 0) throw new Error('no chains');
+    if (!chains || chains.length == 0) {
+        // throw new Error('no chains');
+        var res = {queries: [], pdchs: []};
+        cb(res);
+        return;
+    }
     // log('CHAINS size:', chains);
     var ochains = outer.chains(chains);
     // log('oCHAINS:', ochains);
@@ -88,7 +93,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // var dmorphs = _.select(dbdicts, function(d) { return (d.type == 'mw' || d.type == 'Apte' || d.type == 'term')});
         var dmorphs = _.select(dbdicts, function(d) { return (d.type == 'mw' || d.type == 'Apte')});
         var dterms = _.select(dbdicts, function(d) { return d.type == 'term'});
-        // p('Dbdicts', dbdicts);
+        // p('Dbdicts', dbgs);
         // return;
 
         // а как тут может быть не-единственность? в BG? ее не может быть же?
@@ -105,7 +110,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
                 keys[q.flake] = true;
             });
         });
-        // p('Qterms', qbgs);
+        // p('Qbgs', qbgs);
         // return;
         // var poss = _.select(queries, function(q) { return q.pos == 'plain'})
         // p('Qs', poss);
@@ -157,7 +162,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
                         qclean.dict = d.stem;
                         ok = true;
                     } else {
-                        // log('Q', q, q.pos, d)
+                        // if (d.type == 'BG') log('Q', q, q.pos, d)
                         // if (!d.verb) log('QQ', d)
                     }
                 }
@@ -167,13 +172,13 @@ morpheus.prototype.run = function(samasa, next, cb) {
             });
             if (qclean.dicts.length > 0) qmorphs.push(qclean);
         });
-        // qmorphs = _.select(function(q) { return q.flake == 'अन्तः'});
+        // qmorphs = _.select(function(q) { return q.flake == 'नवानि'});
         // log('Qmorphs', qmorphs);
         // return;
 
         // qcleans это query, к которым есть dicts:
         var qcleans = qbgs.concat(qmorphs).concat(qterms);
-        // qcleans = _.select(qcleans, function(q) { return q.flake == 'अन्तः'});
+        // qcleans = _.select(qcleans, function(q) { return q.flake == 'विहाय'});
         // log('Term+', qcleans);
         // return;
 
@@ -183,22 +188,33 @@ morpheus.prototype.run = function(samasa, next, cb) {
         // log('FL', flakes);
         // return;
         // log('Chains', chains);
+        // return;
         if (!chains[0]) p('NO CHAINS', samasa, flakes);
         var pdch = filterChain(chains, flakes);
         // p('PDCHS', pdch);
+        // return;
         var opdch;
         if (ochains) opdch = filterChain(ochains, flakes);
         // p('oPDCHS', opdch);
 
 
-        var max = 0;
-        var omax = 0;
-        var res = {queries: qcleans};
-        if (pdch && pdch.chains) max =  pdch.chains[0].weigth;
-        if (opdch && opdch.chains) omax =  opdch.chains[0].weigth;
-        if (max >= omax) res.pdchs = pdch.chains;
-        else res.pdchs = opdch.chains;
-        if (!res.pdchs) res.holeys = pdch.holeys || [];
+        var res = {queries: qcleans, pdchs: []};
+        // так нельзя: vihAyaH забивает vihAya
+        // var max = 0;
+        // var omax = 0;
+        // if (pdch && pdch.chains) max =  pdch.chains[0].weigth;
+        // if (opdch && opdch.chains) omax =  opdch.chains[0].weigth;
+        // if (max >= omax) res.pdchs = pdch.chains;
+        // else res.pdchs = opdch.chains;
+
+        var tchains = [];
+        if (pdch && pdch.chains) tchains =  tchains.concat(pdch.chains);
+        if (opdch && opdch.chains) tchains =  tchains.concat(opdch.chains);
+        tchains = _.sortBy(tchains, function(tchain) { return tchain.weigth}).reverse();
+
+        if (tchains.length > 0) res.pdchs = tchains;
+        else res.holeys = pdch.holeys || [];
+        // p(res.pdchs)
         // if (pdch.chains) res.pdchs = pdch.chains;
         // else res.holeys = pdch.holeys;
         cb(res);
