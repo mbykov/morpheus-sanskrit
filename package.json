@@ -16,14 +16,14 @@
   ],
     "dependencies": {
         "relax-component": "*",
+        "salita-component": "*",
         "shiva-sutras": "*",
         "sandhi": "*",
-        "flakes": "*",
+        "vigraha": "*",
         "async": "*",
         "underscore": "*"
     },
     "devDependencies": {
-        "salita-component": "*",
         "uglify-js": "*",
         "mocha": "*",
         "should": "*"

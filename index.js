@@ -9,9 +9,9 @@ var sandhi = s.sandhi;
 var inc = u.include;
 var log = u.log;
 var p = u.p;
-var rasper = require('flakes');
+var vigraha = require('vigraha');
 var outer = require('./lib/outer');
-var stemmer = require('stemmer');
+var stemmer = require('sa-stemmer');
 
 var dbpath = 'http://admin:kjre4317@localhost:5984';
 var Relax = require('relax-component');
@@ -31,14 +31,12 @@ function morpheus() {
 // должен возвращать полностью сформированный список вариантов с весами-вероятностями
 morpheus.prototype.run = function(samasa, next, cb) {
     // log('======MORPHEUS========', samasa, 'next', next);
-    // next-a у меня нет, и не будет, будет as if soft
-    // if (!next) next = 'इ'; // FIXME:
-    // next я определить не могу. Сл., нужно добавить вариант, as if он влияет, а влияет soft обычно
+    // there is no next-a in v-0.3:
     var opt = options(samasa, next);
     clean = samasa;
     if (opt.fin == c.anusvara) clean = outer.correctM(samasa, opt);
     // log('CLEAN', clean);
-    var chains = rasper.cut(clean);
+    var chains = vigraha.pdchs(clean);
     if (!chains || chains.length == 0) {
         // throw new Error('no chains');
         var res = {queries: [], pdchs: []};
