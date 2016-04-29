@@ -17,7 +17,8 @@ var p = u.p;
 
 var param = require('./lib/morph-param');
 
-dbpath = 'http://admin:kjre4317@localhost:5984';
+// dbpath = 'http://admin:kjre4317@localhost:5984';
+dbpath = 'http://localhost:5984';
 var Relax = require('relax-component');
 var relax = new Relax(dbpath);
 // relax.dbname('sa');
