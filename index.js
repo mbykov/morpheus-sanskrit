@@ -13,7 +13,8 @@ var vigraha = require('vigraha');
 var outer = require('./lib/outer');
 var stemmer = require('sa-stemmer');
 
-var dbpath = 'http://admin:kjre4317@localhost:5984';
+// var dbpath = 'http://admin:kjre4317@localhost:5984';
+var dbpath = 'http://localhost:5984';
 var Relax = require('relax-component');
 var relax = new Relax(dbpath);
 
