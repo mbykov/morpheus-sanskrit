@@ -279,7 +279,7 @@ function options(samasa, next) {
 function getDicts(stems, cb) {
     var keys = {keys: stems};
     relax.dbname('sa');
-    var view = 'mw/byStem';
+    var view = 'sa/byStem';
     // log('morph-03 getDicts - POST', JSON.stringify(keys));
     relax
         .postView(view)
