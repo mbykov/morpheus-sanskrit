@@ -16,7 +16,6 @@ var stemmer = require('sa-stemmer');
 var dbpath = 'http://admin:kjre4317@localhost:5984';
 var Relax = require('relax-component');
 var relax = new Relax(dbpath);
-// relax.dbname('gita-add');
 
 var debug = (process.env.debug == 'true') ? true : false;
 
@@ -279,10 +278,8 @@ function options(samasa, next) {
 // gita-add имеет единственный stem по определению
 function getDicts(stems, cb) {
     var keys = {keys: stems};
-    relax.dbname('mw');
+    relax.dbname('sa');
     var view = 'mw/byStem';
-    // relax.dbname('gita-add');
-    // var view = 'gita-add/byStem';
     // log('morph-03 getDicts - POST', JSON.stringify(keys));
     relax
         .postView(view)
