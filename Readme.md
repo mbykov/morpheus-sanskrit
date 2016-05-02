@@ -2,24 +2,35 @@
 
 beta, under heavy development - http://sanskrit.diglossa.org
 
-v. 0.2.0, 'laghu'
+v. 0.3.0, 'शयन'
 
 ## Installation
 
 With node.js:
 
-````javascript
-$ git clone github.com/mbykov/morpheus
+````bash
+$ git clone github.com/mbykov/morpheus-03
 $ cd morpheus
 $ npm install
 ````
 
+## Bash
 
-````javascript
+````bash
 $ node run.js परेष
 or
 $ node run.js pareza (takes slp1 for convenience)
 ````
+
+## API
+````javascript
+var morph = require('morpheus');
+morph.run(samasa, null, function(res) {
+        console.log(res);
+    });
+````
+
+
 
 ## License
 
