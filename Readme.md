@@ -1,6 +1,6 @@
 # simple practical morph analyzer and samAsa parser for Sanskrit
 
-beta, under heavy development - http://sanskrit.diglossa.org
+beta, under heavy development - http://sa.diglossa.org
 
 v. 0.3.0, 'शयन'
 
@@ -17,9 +17,13 @@ $ npm install
 ## Bash
 
 ````bash
-$ node run.js परेष
+$ cd ~/bin
+$ ln -s ~/web/morpheus/morpheus03/morph morph
+everywhere:
+$ morph get परेष
 or
-$ node run.js pareza (takes slp1 for convenience)
+$ morph run pareza (takes slp1 for convenience)
+// morph simply gets dict from Couch DB
 ````
 
 ## API
