@@ -23,7 +23,7 @@ everywhere:
 $ morph get परेष
 or
 $ morph run pareza (takes slp1 for convenience)
-// morph simply gets dict from Couch DB
+// morph get simply gets dict from Couch DB
 ````
 
 ## API
