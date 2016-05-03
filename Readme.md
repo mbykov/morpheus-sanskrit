@@ -18,7 +18,7 @@ $ npm install
 
 ````bash
 $ cd ~/bin
-$ ln -s ~/web/morpheus/morpheus03/morph morph
+$ ln -s ~/path/to/morpheus/morph morph
 everywhere:
 $ morph get परेष
 or
