@@ -1,32 +1,36 @@
-#!/usr/bin/env node
-
 /*
   runner: node morph.js eva
 */
 
 var lat = process.argv.slice(2)[0] || false;
-var pdch = process.argv.slice(3)[0] || false;
+var next = process.argv.slice(3)[0] || false;
 // var util = require('util');
+
+var path = require('path');
+var fs = require('fs');
 
 var sandhi = require('sandhi');
 var u = sandhi.u;
 var log = u.log;
 var p = u.p;
 
+var salita = require('salita-component');
 var morph = require('./index');
-var param = require('./lib/morph-param');
 
 if (!lat) return log('?');
 
-var opt = param(lat);
-var samasa = opt.sa;
-var lat = opt.lat;
+var samasa;
+if (/[a-zA-Z]/.test(lat[0])) {
+    samasa = salita.slp2sa(lat);
+} else {
+    samasa = lat;
+    lat = salita.sa2slp(samasa);
+}
 
 log('_la_:', lat, '_sa_:', samasa);
 
-log('S', samasa)
-
 console.time('_morph');
+
 morph.run(samasa, null, function(res) {
     log('morph-0.4 res: ==============>>');
     p(res);

@@ -46,6 +46,7 @@ function get(stem, cb) {
     // var view = 'gita-add/byStem';
     relax.dbname('sa');
     var view = 'sa/byStem';
+    // var view = 'sa/byIndecl';
     var stems = [stem];
     var keys = ['keys=', JSON.stringify(stems)].join('');
     // var keys = ['keys=', JSON.stringify(['इहैव'])].join('');

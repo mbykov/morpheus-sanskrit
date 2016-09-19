@@ -47,16 +47,8 @@ test:
 		$(TESTS) \
 		2> /dev/null
 
-freq:
-	@NODE_ENV=test ./node_modules/.bin/mocha \
-		--require should \
-		--reporter $(REPORTER) \
-		--slow 500 \
-		--bail \
-		--grep $(g) \
-		--timeout 3000 \
-		$(FREQ) \
-#		2> /dev/null
+gita:
+	@node test/gita.js
 
 
 

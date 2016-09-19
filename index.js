@@ -1,4 +1,4 @@
-// morpheus v.0.3.0
+// morpheus v.0.4.0
 
 var _ = require('underscore');
 var s = require('sandhi');
@@ -11,208 +11,226 @@ var log = u.log;
 var p = u.p;
 var vigraha = require('vigraha');
 var outer = require('./lib/outer');
-var stemmer = require('sa-stemmer');
+// var stemmer = require('sa-stemmer');
+var subanta = require('subanta');
+var tiNanta = require('tiNanta');
+var salita = require('salita-component');
 
-// var dbpath = 'http://admin:kjre4317@localhost:5984';
+var async = require("async");
+
 var dbpath = 'http://localhost:5984';
 var Relax = require('relax-component');
 var relax = new Relax(dbpath);
+relax.dbname('sa');
 
 var debug = (process.env.debug == 'true') ? true : false;
 
 module.exports = morpheus();
+
+var path = require('path');
+var fs = require('fs');
 
 function morpheus() {
     if (!(this instanceof morpheus)) return new morpheus();
     this.queries = [];
 }
 
-// main
-// должен возвращать полностью сформированный список вариантов с весами-вероятностями
+// здесь - в базе есть отметка uchange на всех отбрасываемых - на terms, etc
+function getIndecl(flakes, cb) {
+    var keys = {keys: flakes};
+    var view = 'sa/byIndecl';
+    relax
+        .postView(view)
+        .send(keys)
+        .query({include_docs: true})
+        .end(function(err, res) {
+            if (err) return cb(err, null);
+            let rows = JSON.parse(res.text.trim()).rows;
+            let adocs =  rows.map(function(row) { return row.doc; });
+            adocs = _.select(adocs, function(doc) { return doc.type != 'BG'; }); // only for tests
+            let astems = _.uniq(adocs.map(function(a) { return a.query;}));
+            this.astems = astems;
+            let aqueries = [];
+            astems.forEach(function(astem) {
+                let adoc = _.find(adocs, function(doc) { return doc.query == astem; });
+                let aquery;
+                if (adoc.ind) {
+                    aquery = {ind: true, type: adoc.type, query: adoc.query, slp: adoc.slp, dicts: [adoc._id]};
+                }
+                else if (adoc.type == 'BG') aquery = {ind: true, type: adoc.type, query: adoc.query, slp: adoc.slp, dicts: [adoc._id]};
+                else if (adoc.type == 'term') {
+                    aquery = {ind: true, type: adoc.type, query: adoc.query, pos: adoc.pos, var: adoc.var, dict: adoc.dict, gend: adoc.gend, sups: adoc.sups, dicts: [adoc._id]};
+                }
+                aqueries.push(aquery);
+            });
+            cb(err, aqueries);
+        });
+}
+
+function getChangeable(cleans, flakes, cb) {
+    let chstems = _.difference(flakes, this.astems);
+    let queries = []; // все plains должны появиться в stemmer ?
+
+    chstems.forEach(function(flake) {
+        let qs = subanta.query(flake);
+        qs.forEach(function(q) {
+            q.flake = flake;
+        });
+        queries = queries.concat(qs);
+    });
+
+    tiNanta.query(chstems, function(err, tqueries) {
+        let qskeys = _.uniq(queries.map(function(q) {return q.pada;}));
+        let qtkeys = _.uniq(tqueries.map(function(q) {return q.dhatu;}));
+        let qkeys = _.compact(qskeys.concat(qtkeys));
+        qkeys = _.uniq(qkeys);
+        let totqs = queries.concat(tqueries);
+        getBD(qkeys, function(err, dbdicts) {
+            let namas = _.select(dbdicts, function(d) { return d.name; });
+            let verbs = _.select(dbdicts, function(d) { return d.verb; });
+            let ndicts = namas.map(function(d) { return d.query; });
+            let vdicts = verbs.map(function(d) { return d.query; });
+            let scleans = _.select(queries, function(q) { return inc(ndicts, q.pada); });
+            let tcleans = _.select(tqueries, function(q) { return inc(vdicts, q.dhatu); });
+            let res = {squeries: scleans, tqueries: tcleans, namas: namas, verbs: verbs};
+            cb(null, res);
+        });
+    });
+}
+
 morpheus.prototype.run = function(samasa, next, cb) {
-    // log('======MORPHEUS========', samasa, 'next', next);
-    // there is no next-a in v-0.3:
-    var opt = options(samasa, next);
-    clean = samasa;
-    if (opt.fin == c.anusvara) clean = outer.correctM(samasa, opt);
-    var chains = vigraha.pdchs(clean);
-    if (!chains || chains.length == 0) {
-        // throw new Error('no chains');
+    let cleans = outer.correct(samasa, next);
+
+    if (cleans.length == 0) {
+        throw new Error('no cleans');
         var res = {queries: [], pdchs: []};
         cb(res);
         return;
     }
 
-    var ochains = outer.chains(chains);
-
-    var totalchains = (ochains) ? chains.concat(ochains) : chains;
-
-    var stems = _.uniq(_.flatten(totalchains));
-    var queries = []; // все plains должны появиться в stemmer ?
-
-    var stem;
-    stems.forEach(function(stem) {
-        // if (syllables(stem) < 2) return;
-        var qs = stemmer.query(stem);
-        qs.forEach(function(q) { q.flake = stem});
-        queries = queries.concat(qs);
+    let chains;
+    let totalchains = [];
+    cleans.forEach(function(clean) {
+        chains = vigraha.pdchs(clean);
+        totalchains = totalchains.concat(chains);
     });
 
-    var qstems = _.uniq(queries.map(function(q) { return q.query}));
-    qstems = _.select(qstems, function(qstem) { return qstem.length > 1 || inc(['च', 'न', 'स', 'व', 'ॐ'], qstem)});
+    if (totalchains.length == 0) totalchains = [cleans];
 
-    getDicts(qstems, function(err, dbdicts) {
+    var flakes = _.uniq(_.flatten(totalchains));
 
-        var dbgs = _.select(dbdicts, function(d) { return (d.type == 'BG')});
-        var dmorphs = _.select(dbdicts, function(d) { return (d.type == 'mw' || d.type == 'Apte')});
-        var dterms = _.select(dbdicts, function(d) { return d.type == 'term'});
+    async.series([
+        function(cb) {
+            getIndecl(flakes, cb);
+        },
+        function(cb) {
+            getChangeable(cleans, flakes, cb);
+        },
+    ], function (err, results) {
 
-        var qbgs = [];
-        var keys = {};
-        queries.forEach(function(q) {
-            // FIXME: здесь должна быть и query тоже
-            dbgs.forEach(function(d) {
-                if (d.pdchs) return; // это расшифровка pdchs из словаря BG, цель, то, что нужно найти. Здесь оно д.б. пропущено
-                if (q.flake != d.stem) return;
-                if (keys[q.flake]) return;
-                var qclean = {flake: q.flake, dicts: [d._id]};
-                qbgs.push(qclean)
-                keys[q.flake] = true;
-            });
-        });
+        let amorphs = results[0];
+        let squeries = results[1].squeries;
+        let tqueries = results[1].tqueries;
+        let namas = results[1].namas;
+        let verbs = results[1].verbs;
 
-        var qterms = dterms.map(function(d) {
-            var qclean = {flake: d.stem, dict: d.dict, term: '', morphs: d.morphs, dicts: [d._id]};
-            if (d.pos == 'pron') qclean.pron = true;
-            qclean.stem = d.stem; // нужно-ли ?
-            return qclean;
-        });
+        let smorphs = mapDict2query(results[1].squeries, namas);
+        let tmorphs = mapDict2query(results[1].tqueries, verbs);
 
-        var qmorphs = [];
-        queries.forEach(function(q) {
-            var qclean = {flake: q.flake, dicts: []};
-            dmorphs.forEach(function(d) {
-                var ok = false;
-                if (q.la) {
-                    if (!d.verb)  return;
-                    if (q.query == d.stem || (!d.slps && inc(d.forms, q.query) )) { // !d.slps - to strip samasas
-                        qclean.verb = true;
-                        qclean.dict = d.stem;
-                        var morph = {la: q.la, pada: q.pada, key: q.key, gana: q.gana};   // ????? и всегда только один morph ????
-                        qclean.morph = morph;
-                        ok = true;
-                    }
-                } else {
-                    // путается q.term - окончание и term - тип записи
-                    if (q.query != d.stem) return;
-                    qclean.term = q.term;
-                    if (q.pos == 'name' && d.name && d.lex) {
-                        qclean.name = true;
-                        qclean.dict = d.stem;
-                        qclean.morphs = q.morphs;
-                        ok = true;
-                    } else if (q.pos == 'plain' && d.ind) {
-                        qclean.ind = true;
-                        qclean.term = '';
-                        qclean.dict = d.stem;
-                        ok = true;
-                    } else {
-                        // if (!d.verb) log('QQ', d)
-                    }
-                }
-                var id = d._id;
-                if (ok) qclean.dicts.push(id);
-            });
-            if (qclean.dicts.length > 0) qmorphs.push(qclean);
-        });
+        let aflakes = _.uniq(results[0].map(function(q) { return q.query; }));
+        let sflakes = _.uniq(smorphs.map(function(q) { return q.flake; }));
+        let tflakes = _.uniq(tmorphs.map(function(q) { return q.flake; }));
+        let totalflakes = _.uniq(aflakes.concat(sflakes).concat(tflakes));
+        let pdchs = filterChain(totalchains, totalflakes);
 
-        var qcleans = qbgs.concat(qmorphs).concat(qterms);
+        let qcleans = amorphs.concat(smorphs).concat(tmorphs);
 
-        // flakes - query из qcleans:
-        var flakes = qcleans.map(function(q) { return q.flake});
-        flakes =_.uniq(flakes);
-        if (!chains[0]) p('NO CHAINS', samasa, flakes);
-        var pdch = filterChain(chains, flakes);
-        var opdch;
-        if (ochains) opdch = filterChain(ochains, flakes);
-
-
-        var res = {queries: qcleans, pdchs: []};
-
-        var tchains = [];
-        if (pdch && pdch.chains) tchains =  tchains.concat(pdch.chains);
-        if (opdch && opdch.chains) tchains =  tchains.concat(opdch.chains);
-        tchains = _.sortBy(tchains, function(tchain) { return tchain.weigth}).reverse();
-
-        if (tchains.length > 0) res.pdchs = tchains;
-        else res.holeys = pdch.holeys || [];
-        cb(res);
-        // cb([]);
+        let result = {queries: qcleans, pdchs: pdchs};
+        cb(result);
     });
-    return;
 }
 
-// м.б. считать syllables, а не length ? чтобы flexes не лезли вперед, а length - наоборот, уменьшить weight ?
-// второе - лучше бы наверх - простейшие, т.е. flake=query ?
-function filterChain(chains, flakes) {
-    // log('C', chains);
-    var pdchs = [];
-    var holeys = [];
-    var bads = [];
-    // здесь возникает ошибка, нет chains[0]
-    var total = Math.pow(chains[0].join('').length, 2);
-    chains.forEach(function(chain) {
-        var nonuniq = 0;
-        if (chain.length != _.uniq(chain).length) nonuniq +=1;
-        var pdch = {chain: chain, weigth: 0};
-        var ok = 0;
-        flakes.forEach(function(flake) {
-            if (inc(chain, flake)) {
-                pdch.weigth += Math.pow(flake.length, 2);
-                ok += 1;
+function mapDict2query(queries, dicts) {
+    let qmorphs = [];
+    queries.forEach(function(cq) {
+        let q = JSON.parse(JSON.stringify(cq));
+        q.dicts = [];
+        dicts.forEach(function(d) {
+            if (q.verb && d.verb) {
+                if (q.dhatu == d.query) { // !d.slps - to strip samasas
+                    q.dicts.push(d._id);
+                }
+            } else {
+                if (q.name && d.name && q.pada == d.query && q.var == d.var) {
+                    if (d.gend == 'mfn') q.dicts.push(d._id);
+                    else if (d.gend == q.gend[0]) q.dicts.push(d._id);
+                }
+                // else if (q.plain && d.name && q.pada == d.query && q.var == d.var) {
+                else if (q.plain && d.name && q.pada == d.query) {
+                    let alreadies = _.select(qmorphs, function(already) { return already.pada == q.pada; });
+                    if (alreadies.length > 0) return;
+                    q.dicts.push(d._id);
+                }
             }
         });
-        ok += nonuniq; // если не uniq, то ok=1, короче
-        if (pdch.weigth > 0) {
-            pdch.weigth = (pdch.weigth/total).toFixed(2);
-            if (ok == chain.length) pdchs.push(pdch);
-            else if (ok -1 == chain.length) holeys.push(pdch);
-            else holeys.push(pdch);
-        }
+        if (q.dicts.length > 0) qmorphs.push(q);
     });
-    var res = {};
-    if (pdchs.length > 0) {
-        res.chains = _.sortBy(pdchs, function(pdch) { return pdch.weigth}).reverse();
-    } else {
-        holeys = _.sortBy(holeys, function(pdch) { return pdch.weigth}).reverse();
-        res.holeys = holeys.slice(0, 5); // FIXME: выбрать с одной дырой
-    }
-    return {chains: res.chains, holeys: res.holeys} ;
-}
-
-function options(samasa, next) {
-    var opt = {};
-    opt.fin = u.last(samasa);
-    opt.penult = u.penult(samasa);
-    return opt;
+    return qmorphs;
 }
 
 
-// забрать реально существующие padas из BD, POST
-// gita-add имеет единственный stem по определению
-function getDicts(stems, cb) {
-    var keys = {keys: stems};
+function filterChain(chains, flakes) {
+    var pdchs = [];
+    var base = Math.pow(chains[0].join('').length, 2);
+
+    chains.forEach(function(chain) {
+        let pdch = {chain: chain, weight: 1, ok: 1};
+        chain.forEach(function(flake) {
+            if (inc(flakes, flake)) {
+                pdch.weight += Math.pow(flake.length, 3);
+            } else {
+                let size = flake.length;
+                let fake = Array(size).join('x');
+                let index = chain.indexOf(flake);
+                chain[index] = fake;
+                pdch.ok = 0;
+            }
+        });
+        let cbase = base * chain.length;
+        pdch.weight = (pdch.weight/cbase).toFixed(2);
+        pdchs.push(pdch);
+    });
+
+    if (pdchs.length == 0) return [];
+    let cleans = _.sortBy(pdchs, function(pdch) { return pdch.weight; }).reverse();
+    cleans = cleans.slice(0, 15);
+    let qpdchs = _.select(cleans, function(pdch) { return pdch.ok; });
+    let qchains = qpdchs.map(function(pdch) { return pdch.chain; });
+    if (qchains.length > 0) return qchains;
+    return [];
+
+}
+
+// function options(samasa, next) {
+//     var opt = {};
+//     opt.fin = u.last(samasa);
+//     opt.penult = u.penult(samasa);
+//     return opt;
+// }
+
+
+function getBD(qkeys, cb) {
+    var keys = {keys: qkeys};
     relax.dbname('sa');
     var view = 'sa/byStem';
     relax
         .postView(view)
         .send(keys)
         .query({include_docs: true})
-        .set('Content-Type', 'application/json')
         .end(function(err, res) {
             if (err) return cb(err, null);
             var rows = JSON.parse(res.text.trim()).rows;
-            var docs =  _.uniq(rows.map(function(row) { return row.doc }));
+            var docs =  rows.map(function(row) { return row.doc; });
             cb(err, docs);
         });
 }
