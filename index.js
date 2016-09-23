@@ -5,13 +5,11 @@ var s = require('sandhi');
 var c = s.const;
 var u = s.u;
 var sandhi = s.sandhi;
-// var outer = s.outer;
 var inc = u.include;
 var log = u.log;
 var p = u.p;
 var vigraha = require('vigraha');
 var outer = require('./lib/outer');
-// var stemmer = require('sa-stemmer');
 var subanta = require('subanta');
 var tiNanta = require('tiNanta');
 var salita = require('salita-component');
@@ -47,28 +45,36 @@ function getIndecl(flakes, cb) {
             if (err) return cb(err, null);
             let rows = JSON.parse(res.text.trim()).rows;
             let adocs =  rows.map(function(row) { return row.doc; });
-            adocs = _.select(adocs, function(doc) { return doc.type != 'BG'; }); // only for tests
             let astems = _.uniq(adocs.map(function(a) { return a.query;}));
-            this.astems = astems;
+            let indecls = _.select(adocs, function(doc) { return doc.type != 'BG'; });
+            let istems = _.uniq(indecls.map(function(a) { return a.query;}));
+            this.istems = istems;
             let aqueries = [];
             astems.forEach(function(astem) {
-                let adoc = _.find(adocs, function(doc) { return doc.query == astem; });
-                let aquery;
-                if (adoc.ind) {
-                    aquery = {ind: true, type: adoc.type, query: adoc.query, slp: adoc.slp, dicts: [adoc._id]};
-                }
-                else if (adoc.type == 'BG') aquery = {ind: true, type: adoc.type, query: adoc.query, slp: adoc.slp, dicts: [adoc._id]};
-                else if (adoc.type == 'term') {
-                    aquery = {ind: true, type: adoc.type, query: adoc.query, pos: adoc.pos, var: adoc.var, dict: adoc.dict, gend: adoc.gend, sups: adoc.sups, dicts: [adoc._id]};
-                }
-                aqueries.push(aquery);
+                // let adoc = _.find(adocs, function(doc) { return doc.query == astem; });
+                let idocs = _.select(adocs, function(doc) { return doc.query == astem; });
+                idocs.forEach(function(adoc) {
+                    if (adoc.ind) {
+                        let aquery = {ind: true, type: adoc.type, query: adoc.query, slp: adoc.slp, dicts: [adoc._id]};
+                        aqueries.push(aquery);
+                    }
+                    if (adoc.type == 'BG') {
+                        let aquery = {ind: true, type: adoc.type, query: adoc.query, slp: adoc.slp, dicts: [adoc._id]};
+                        aqueries.push(aquery);
+                    }
+                    if (adoc.type == 'term') {
+                        let aquery = {ind: true, type: adoc.type, query: adoc.query, pos: adoc.pos, var: adoc.var, dict: adoc.dict, gend: adoc.gend, sups: adoc.sups, dicts: [adoc._id]};
+                        aqueries.push(aquery);
+                    }
+                });
             });
+            log('A', aqueries);
             cb(err, aqueries);
         });
 }
 
 function getChangeable(cleans, flakes, cb) {
-    let chstems = _.difference(flakes, this.astems);
+    let chstems = _.difference(flakes, this.istems);
     let queries = []; // все plains должны появиться в stemmer ?
 
     chstems.forEach(function(flake) {
