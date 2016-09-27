@@ -68,7 +68,6 @@ function getIndecl(flakes, cb) {
                     }
                 });
             });
-            log('A', aqueries);
             cb(err, aqueries);
         });
 }
@@ -109,7 +108,7 @@ morpheus.prototype.run = function(samasa, next, cb) {
 
     if (cleans.length == 0) {
         throw new Error('no cleans');
-        var res = {queries: [], pdchs: []};
+        let res = {queries: [], pdchs: []};
         cb(res);
         return;
     }
@@ -133,6 +132,14 @@ morpheus.prototype.run = function(samasa, next, cb) {
             getChangeable(cleans, flakes, cb);
         },
     ], function (err, results) {
+
+        if (!results[1]) {
+            log('NO RES 1 - samasa:', samasa);
+            throw new Error('no res 1');
+            let res = {queries: [], pdchs: []};
+            cb(res);
+            return;
+        }
 
         let amorphs = results[0];
         let squeries = results[1].squeries;
